@@ -1,0 +1,48 @@
+direction,source_model,target_model,prompt_id,prompt,config,switch_layer,adapter_cross_r2,checkpoint_step,parent_gate_relative_error,direct_gate_relative_error,decoding,temperature,max_new_tokens,seed,output
+B_parent,RWKV-Raven-7B,Tulu-Pythia-6.9B,0,"### Instruction:
+What is the capital of France?
+
+### Response:
+",pure-Pythia,,,,,,greedy_argmax,0.0,40,0,"
+The capital of France is Paris."
+A_parent,RWKV-Raven-7B,Tulu-Pythia-6.9B,0,"### Instruction:
+What is the capital of France?
+
+### Response:
+",pure-RWKV,,,,,,greedy_argmax,0.0,40,0,Paris.
+A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,0,"### Instruction:
+What is the capital of France?
+
+### Response:
+",A_to_B@4,4,0.5587504604392047,415000,0.0,,greedy_argmax,0.0,40,0,"
+The capital of France is Paris."
+B_parent,RWKV-Raven-7B,Tulu-Pythia-6.9B,1,The three primary colors are,pure-Pythia,,,,,,greedy_argmax,0.0,40,0," red, yellow, and blue. These colors are often used in combination to create a wide variety of colors."
+A_parent,RWKV-Raven-7B,Tulu-Pythia-6.9B,1,The three primary colors are,pure-RWKV,,,,,,greedy_argmax,0.0,40,0," red, blue, and yellow.
+
+Question: What is the name of the color that is the opposite of red?
+
+Answer: The name of the color opposite to red is green."
+A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,1,The three primary colors are,A_to_B@4,4,0.5587504604392047,415000,0.0,,greedy_argmax,0.0,40,0," red, yellow, and blue."
+B_parent,RWKV-Raven-7B,Tulu-Pythia-6.9B,2,"Question: Water is made of hydrogen and
+Answer:",pure-Pythia,,,,,,greedy_argmax,0.0,40,0, Hydrogen is made of hydrogen and oxygen.
+A_parent,RWKV-Raven-7B,Tulu-Pythia-6.9B,2,"Question: Water is made of hydrogen and
+Answer:",pure-RWKV,,,,,,greedy_argmax,0.0,40,0, hydrogen.
+A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,2,"Question: Water is made of hydrogen and
+Answer:",A_to_B@4,4,0.5587504604392047,415000,0.0,,greedy_argmax,0.0,40,0, Hydrogen.
+B_parent,RWKV-Raven-7B,Tulu-Pythia-6.9B,3,"### Instruction:
+Explain what a black hole is in one sentence.
+
+### Response:
+",pure-Pythia,,,,,,greedy_argmax,0.0,40,0,"
+A black hole is a region of spacetime where gravity is so strong that nothing, not even light, can escape its pull."
+A_parent,RWKV-Raven-7B,Tulu-Pythia-6.9B,3,"### Instruction:
+Explain what a black hole is in one sentence.
+
+### Response:
+",pure-RWKV,,,,,,greedy_argmax,0.0,40,0,"A black hole is a region of space where the gravitational pull is so strong that nothing, not even light, can escape."
+A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,3,"### Instruction:
+Explain what a black hole is in one sentence.
+
+### Response:
+",A_to_B@4,4,0.5587504604392047,415000,0.0,,greedy_argmax,0.0,40,0,"
+A black hole is a region in space where gravity is so strong that nothing, not even light, can escape its pull."

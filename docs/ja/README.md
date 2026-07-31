@@ -1,0 +1,68 @@
+# NinaXander
+
+[English](../README.md) | 日本語 | [简体中文](../zh-CN/README.md)
+
+> **NinaXanderは本プロジェクトが生成する最終chimera modelの名称です。**
+> 異なるarchitecture familyの凍結blockを、学習済みshared-latent adapterで接続した単一モデルです。
+> 以下の研究はそこへ向かう過程であり、「NinaXander」は常にこの合成モデルを指し、研究分野全体を
+> 指すものではありません。
+
+異なるarchitecture family（RNN/SSM ↔ Transformer）の凍結済みpretrained blockを、
+学習した**shared-latent adapter**を介して合成し、**chimera**言語モデルを構築します。
+
+adapterは手段であって目的ではありません。目標は、実際に*機能する*chimeraです。
+残差alignment R²はそのproxyにすぎません。
+
+## 文書
+
+| ファイル | 内容 |
+|---|---|
+| [00-overview.md](00-overview.md) | NinaXanderの定義、主張、対象モデルpair |
+| [01-method.md](01-method.md) | shared-latent adapter、そのloss、chimera構築法 |
+| [02-findings.md](02-findings.md) | runまで追跡可能な確立済み結果を、誇張せず記述 |
+| [03-roadmap.md](03-roadmap.md) | 完了事項、未解決問題、既知の失敗経路 |
+| [../paper/](../../paper/) | 論文（`paper_ja.tex`） |
+
+## 現状の要約
+
+対象pairは**RWKV-4-Raven-7B（pure RNN）↔ open-instruct-pythia-6.9b-tulu（Transformer）**です。
+ともに32 block、d4096、GPT-NeoX tokenizerであり、Alpaca上で整列させました。
+latent幅z=4096（圧縮なし）、σ=0.4、268.5M parameterの単一shared-latent adapterを
+**415k step**（job 1832 → 1837）学習し、forward hookで**全32 block**の残差を取得しました。
+held-outの**centered** ρ_ctrは0.901、AA/AB/BB/BA read-outは
+0.695/0.559/0.711/0.590です。両read-outは**alignmentではなくreconstructionに制約**されます。
+全32層でA→BはB→Bを下回り、B→AはA→Aを下回ります。圧縮をなくしてもdecoderは
+near-losslessにならず、self-mapを制約する要因は未解決です。以前のdraftで示した
+1/(1+σ²) ≈ 0.862という「noise ceiling」は*noisy*-eval値でした。clean-z evalではceilingは
+約0.98であるため、noiseはbinding constraintではなく、σ sweepが必要です。
+
+adapterはどちらの方向でも**near-linearではありません**。AB出力の13.4%、BA出力の12.0%が
+不可約なnon-linear成分であり、同じnonlinear branchを無効にすると両read-outが崩壊します。
+7B chimeraは実在し、**会話できます**。両方とも“What is the capital of France?”へ回答しますが、
+残りの固定promptでは事実またはformatが劣化します。**全test set**
+（SciQ N=1000、ARC-Easy N=2376）でAB@4は70.9/59.6となり、RWKVを上回るのはSciQだけです。
+BA@4は69.2/62.2で、両taskともRWKVと統計的に同等です。両方のcross-family pathの全構成が、
+より強いPythia親を下回ります。BA@16/@24は同層ABより8.9〜18.8 point高く、
+depth効果が経路依存であることを示します。
+
+実測release既定値は`NinaXander-BA@4`です。Transformer blockを5つだけ保持し、
+KVを**84.375%**削減しますが、2 task平均65.70はAB@4を0.45 point上回るだけです。
+これは独立したdeployment selection splitによる検証ではなく、報告test上で
+2 cross-family path × 4 switchからpost-hocに選んだ結果です。どちらの方向でもautoencoder対照との
+差には前半親モデルの能力とtranslationの両方が含まれ、純粋なtranslation errorではありません。
+interfaceは依然として**domain-specific**です。BA@4はWikiText context-2048 perplexityを
+AB@4の83.4から34.8へ改善しますが、より良い親モデルは8.27です。
+
+中心的な未解決問題は、translationをnear-losslessにできるかです。現在の対照だけでは
+chimeraの損失全体をcross-map R²へ帰属できず、decoder reconstructionと選択した前半親モデルの
+能力も寄与します。
+
+## 再現
+
+プログラムは`../experiments/`、役割別launcherは`../experiments/slurm/`にあります。
+`../reproduce.sh check|tables|map|paper|gpu-eval`で検証・集計・投入を行います。実験出力は
+`../artifacts/metrics/raw/`へ書き、`../artifacts/metrics/tables/`の論文用CSVへ正規化します。
+報告runでは初期probeにV100-32GB 1台、学習・評価にV100-16GB 4台のnodeを使いました。
+model-parallel evaluator（`*_mp.py`）はpairを16 GiB GPU 2枚へ分割します。Python、partition、
+CPU割当、GPU request、log pathはGit管理外の`.env`で設定し、公開launcherにサイト固有pathや
+cluster名は含めません。

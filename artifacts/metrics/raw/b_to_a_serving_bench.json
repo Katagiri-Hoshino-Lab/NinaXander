@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "direction": "B_to_A",
+  "source_model": "Tulu-Pythia-6.9B",
+  "target_model": "RWKV-Raven-7B",
+  "implementation": "unpruned_full_parent_reforward",
+  "adapter": "SNAP_L32_final.pt",
+  "checkpoint_step": 415000,
+  "checkpoint_b_to_a_r2": 0.5900067890580303,
+  "switches": [
+    4,
+    8,
+    16,
+    24
+  ],
+  "contexts": [
+    512,
+    2048
+  ],
+  "decode_context": 512,
+  "decode_tokens": 16,
+  "repetitions": 3,
+  "parent_reproduction_relative_error": {
+    "4": 0.0,
+    "8": 0.0,
+    "16": 0.0,
+    "24": 0.0
+  },
+  "weights_MiB": {
+    "rwkv_adapter_devA": 14615.046875,
+    "pythia_devB": 13076.8603515625
+  },
+  "prefill": {
+    "512": {
+      "pure-Pythia": {
+        "ms": 96.99401445686817,
+        "peak_devA_MiB": 14623.171875,
+        "peak_devB_MiB": 13139.9892578125
+      },
+      "pure-RWKV": {
+        "ms": 6559.039378538728,
+        "peak_devA_MiB": 14687.17578125,
+        "peak_devB_MiB": 13085.9853515625
+      },
+      "B_to_A@4": {
+        "ms": 6639.6748945117,
+        "peak_devA_MiB": 14692.17578125,
+        "peak_devB_MiB": 13143.9892578125
+      },
+      "B_to_A@8": {
+        "ms": 6631.293946877122,
+        "peak_devA_MiB": 14692.17578125,
+        "peak_devB_MiB": 13143.9892578125
+      },
+      "B_to_A@16": {
+        "ms": 6633.155716583133,
+        "peak_devA_MiB": 14692.17578125,
+        "peak_devB_MiB": 13143.9892578125
+      },
+      "B_to_A@24": {
+        "ms": 6633.967388421297,
+        "peak_devA_MiB": 14692.17578125,
+        "peak_devB_MiB": 13143.9892578125
+      }
+    },
+    "2048": {
+      "pure-Pythia": {
+        "ms": 376.85259245336056,
+        "peak_devA_MiB": 14624.171875,
+        "peak_devB_MiB": 13298.3994140625
+      },
+      "pure-RWKV": {
+        "ms": 25998.651644214988,
+        "peak_devA_MiB": 14880.1875,
+        "peak_devB_MiB": 13085.9853515625
+      },
+      "B_to_A@4": {
+        "ms": 26439.20554406941,
+        "peak_devA_MiB": 14896.1875,
+        "peak_devB_MiB": 13314.3994140625
+      },
+      "B_to_A@8": {
+        "ms": 26434.88191254437,
+        "peak_devA_MiB": 14896.1875,
+        "peak_devB_MiB": 13314.3994140625
+      },
+      "B_to_A@16": {
+        "ms": 26436.04265898466,
+        "peak_devA_MiB": 14896.1875,
+        "peak_devB_MiB": 13314.3994140625
+      },
+      "B_to_A@24": {
+        "ms": 26438.328243792057,
+        "peak_devA_MiB": 14896.1875,
+        "peak_devB_MiB": 13314.3994140625
+      }
+    }
+  },
+  "decode": {
+    "pure-Pythia": {
+      "tok_per_s": 9.491199863187788,
+      "ms_per_token": 105.36075674463063
+    },
+    "pure-RWKV": {
+      "tok_per_s": 0.15075607415754158,
+      "ms_per_token": 6633.231898536906
+    },
+    "B_to_A@4": {
+      "tok_per_s": 0.1481795486437001,
+      "ms_per_token": 6748.569618095644
+    },
+    "B_to_A@8": {
+      "tok_per_s": 0.14821452036189772,
+      "ms_per_token": 6746.977270231582
+    },
+    "B_to_A@16": {
+      "tok_per_s": 0.14819234290061012,
+      "ms_per_token": 6747.986977105029
+    },
+    "B_to_A@24": {
+      "tok_per_s": 0.14820126437649614,
+      "ms_per_token": 6747.580759227276
+    }
+  }
+}

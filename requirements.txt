@@ -1,0 +1,10 @@
+# Python dependencies used by the current 32-layer pipeline (newer patch versions likely fine).
+# GPU results need a CUDA torch build.
+torch==2.10.0            # experiments ran on 2.10.0+cu128 (V100)
+transformers==5.2.0
+datasets==4.5.0
+numpy
+safetensors>=0.4.3
+huggingface_hub>=0.20
+# System (not pip): a LaTeX toolchain with lualatex and bibtex (TeX Live / TinyTeX) to build the paper,
+# including tikz, booktabs, and luatexja.

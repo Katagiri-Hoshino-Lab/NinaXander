@@ -1,0 +1,8 @@
+metric,checkpoint_key,execution_path,value,checkpoint_step,latent_size,layers,source_file
+self_reconstruction_a_r2,A->A,A_to_A,0.6950054381443648,415000,4096,32,release/huggingface/ninaxander-raven7b-tulu69-adapter/config.json
+cross_readout_a_to_b_r2,A->B,A_to_B,0.5587504604392047,415000,4096,32,release/huggingface/ninaxander-raven7b-tulu69-adapter/config.json
+self_reconstruction_b_r2,B->B,B_to_B,0.7112487126005516,415000,4096,32,release/huggingface/ninaxander-raven7b-tulu69-adapter/config.json
+cross_readout_b_to_a_r2,B->A,B_to_A,0.5900067890580303,415000,4096,32,release/huggingface/ninaxander-raven7b-tulu69-adapter/config.json
+latent_correlation_centered,rho_ctr,,0.9006011441130418,415000,4096,32,release/huggingface/ninaxander-raven7b-tulu69-adapter/config.json
+latent_correlation_raw,rho_raw,,0.9654419476692219,415000,4096,32,release/huggingface/ninaxander-raven7b-tulu69-adapter/config.json
+latent_alignment_f,f,,0.3500733557882671,415000,4096,32,release/huggingface/ninaxander-raven7b-tulu69-adapter/config.json

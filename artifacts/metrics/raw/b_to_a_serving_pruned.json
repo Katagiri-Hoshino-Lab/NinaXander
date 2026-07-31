@@ -1,0 +1,230 @@
+{
+  "schema_version": 1,
+  "direction": "B_to_A",
+  "source_model": "Tulu-Pythia-6.9B",
+  "target_model": "RWKV-Raven-7B",
+  "implementation": "physically_pruned",
+  "adapter": "SNAP_L32_final.pt",
+  "checkpoint_step": 415000,
+  "checkpoint_b_to_a_r2": 0.5900067890580303,
+  "switches": [
+    4,
+    8,
+    16,
+    24
+  ],
+  "ctx": [
+    512,
+    2048
+  ],
+  "repetitions": 3,
+  "gate_tolerance": 0.0001,
+  "parent_reproduction_relative_error": {
+    "4": 0.0,
+    "8": 0.0,
+    "16": 0.0,
+    "24": 0.0
+  },
+  "configs": {
+    "pure-Pythia": {
+      "pythia_blocks": 32,
+      "rwkv_blocks": 0,
+      "weight_MiB_devA": 0.0,
+      "weight_MiB_devB": 13076.859375,
+      "prefill": {
+        "512": {
+          "ms": 96.74072824418545,
+          "peak_devA_MiB": 14623.171875,
+          "peak_devB_MiB": 13139.9892578125
+        },
+        "2048": {
+          "ms": 377.9116403311491,
+          "peak_devA_MiB": 14623.171875,
+          "peak_devB_MiB": 13298.3994140625
+        }
+      }
+    },
+    "pure-RWKV": {
+      "pythia_blocks": 0,
+      "rwkv_blocks": 32,
+      "weight_MiB_devA": 14100.859375,
+      "weight_MiB_devB": 0.0,
+      "prefill": {
+        "512": {
+          "ms": 6666.65124706924,
+          "peak_devA_MiB": 14687.17578125,
+          "peak_devB_MiB": 13085.9853515625
+        },
+        "2048": {
+          "ms": 26544.070167466998,
+          "peak_devA_MiB": 14879.1875,
+          "peak_devB_MiB": 13085.9853515625
+        }
+      }
+    },
+    "B_early_exit@5": {
+      "pythia_blocks": 5,
+      "rwkv_blocks": 0,
+      "weight_MiB_devA": 0.0,
+      "weight_MiB_devB": 2706.1171875,
+      "prefill": {
+        "512": {
+          "ms": 18.417395651340485,
+          "peak_devA_MiB": 522.3125,
+          "peak_devB_MiB": 2769.2470703125
+        },
+        "2048": {
+          "ms": 74.65318031609058,
+          "peak_devA_MiB": 522.3125,
+          "peak_devB_MiB": 2927.6572265625
+        }
+      }
+    },
+    "B_early_exit@9": {
+      "pythia_blocks": 9,
+      "rwkv_blocks": 0,
+      "weight_MiB_devA": 0.0,
+      "weight_MiB_devB": 4242.5234375,
+      "prefill": {
+        "512": {
+          "ms": 30.28317727148533,
+          "peak_devA_MiB": 522.3125,
+          "peak_devB_MiB": 4305.6533203125
+        },
+        "2048": {
+          "ms": 119.14808861911297,
+          "peak_devA_MiB": 522.3125,
+          "peak_devB_MiB": 4464.0634765625
+        }
+      }
+    },
+    "B_early_exit@17": {
+      "pythia_blocks": 17,
+      "rwkv_blocks": 0,
+      "weight_MiB_devA": 0.0,
+      "weight_MiB_devB": 7315.3359375,
+      "prefill": {
+        "512": {
+          "ms": 53.40432561933994,
+          "peak_devA_MiB": 522.3125,
+          "peak_devB_MiB": 7378.4658203125
+        },
+        "2048": {
+          "ms": 207.892544567585,
+          "peak_devA_MiB": 522.3125,
+          "peak_devB_MiB": 7536.8759765625
+        }
+      }
+    },
+    "B_early_exit@25": {
+      "pythia_blocks": 25,
+      "rwkv_blocks": 0,
+      "weight_MiB_devA": 0.0,
+      "weight_MiB_devB": 10388.1484375,
+      "prefill": {
+        "512": {
+          "ms": 76.65477320551872,
+          "peak_devA_MiB": 522.3125,
+          "peak_devB_MiB": 10451.2783203125
+        },
+        "2048": {
+          "ms": 297.6147122681141,
+          "peak_devA_MiB": 522.3125,
+          "peak_devB_MiB": 10609.6884765625
+        }
+      }
+    },
+    "pruned-B_to_A@4": {
+      "pythia_blocks": 5,
+      "rwkv_blocks": 27,
+      "weight_MiB_devA": 12139.734375,
+      "weight_MiB_devB": 2313.3046875,
+      "weight_MiB_total": 14453.0390625,
+      "parent_gate_rel": 0.0,
+      "source_front_gate_rel": 0.0,
+      "target_suffix_gate_rel": 0.0,
+      "gate_rel": 0.0,
+      "prefill": {
+        "512": {
+          "ms": 5652.470350265503,
+          "peak_devA_MiB": 12218.10546875,
+          "peak_devB_MiB": 2765.10546875
+        },
+        "2048": {
+          "ms": 22606.095526367426,
+          "peak_devA_MiB": 12410.10546875,
+          "peak_devB_MiB": 2909.31640625
+        }
+      }
+    },
+    "pruned-B_to_A@8": {
+      "pythia_blocks": 9,
+      "rwkv_blocks": 23,
+      "weight_MiB_devA": 10475.328125,
+      "weight_MiB_devB": 3849.7109375,
+      "weight_MiB_total": 14325.0390625,
+      "parent_gate_rel": 0.0,
+      "source_front_gate_rel": 0.0,
+      "target_suffix_gate_rel": 0.0,
+      "gate_rel": 0.0,
+      "prefill": {
+        "512": {
+          "ms": 4868.92069876194,
+          "peak_devA_MiB": 10553.69921875,
+          "peak_devB_MiB": 4301.51171875
+        },
+        "2048": {
+          "ms": 19299.7431345284,
+          "peak_devA_MiB": 10745.69921875,
+          "peak_devB_MiB": 4445.72265625
+        }
+      }
+    },
+    "pruned-B_to_A@16": {
+      "pythia_blocks": 17,
+      "rwkv_blocks": 15,
+      "weight_MiB_devA": 7146.515625,
+      "weight_MiB_devB": 6922.5234375,
+      "weight_MiB_total": 14069.0390625,
+      "parent_gate_rel": 0.0,
+      "source_front_gate_rel": 0.0,
+      "target_suffix_gate_rel": 0.0,
+      "gate_rel": 0.0,
+      "prefill": {
+        "512": {
+          "ms": 3230.9814393520355,
+          "peak_devA_MiB": 7224.88671875,
+          "peak_devB_MiB": 7374.32421875
+        },
+        "2048": {
+          "ms": 12844.906223937869,
+          "peak_devA_MiB": 7416.88671875,
+          "peak_devB_MiB": 7518.53515625
+        }
+      }
+    },
+    "pruned-B_to_A@24": {
+      "pythia_blocks": 25,
+      "rwkv_blocks": 7,
+      "weight_MiB_devA": 3817.703125,
+      "weight_MiB_devB": 9995.3359375,
+      "weight_MiB_total": 13813.0390625,
+      "parent_gate_rel": 0.0,
+      "source_front_gate_rel": 0.0,
+      "target_suffix_gate_rel": 0.0,
+      "gate_rel": 0.0,
+      "prefill": {
+        "512": {
+          "ms": 1542.092302814126,
+          "peak_devA_MiB": 3896.07421875,
+          "peak_devB_MiB": 10447.13671875
+        },
+        "2048": {
+          "ms": 6145.166024565697,
+          "peak_devA_MiB": 4088.07421875,
+          "peak_devB_MiB": 10591.34765625
+        }
+      }
+    }
+  }
+}

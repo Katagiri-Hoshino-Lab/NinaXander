@@ -1,0 +1,133 @@
+{
+  "schema_version": 2,
+  "directions": [
+    "A_to_B",
+    "B_to_A"
+  ],
+  "boundaries": {
+    "A_to_B": "RWKV post-block L -> Pythia pre-block L+1",
+    "B_to_A": "Pythia post-block L -> RWKV pre-block L+1"
+  },
+  "switches": [
+    4,
+    8,
+    16,
+    24
+  ],
+  "offsets": {
+    "rwkv": 0,
+    "pythia": 1
+  },
+  "checkpoint_r2": {
+    "A_to_B": 0.5587504604392047,
+    "B_to_A": 0.5900067890580303
+  },
+  "canonical_option_batch": 1,
+  "rwkv_fused_batch_role": "diagnostic only; never used for reported QA",
+  "rows": [
+    {
+      "direction": "A_to_B",
+      "switch_layer": 4,
+      "parent_gate_relative_error": 0.0,
+      "direct_gate_relative_error": null,
+      "direct_vs_hook_relative_error": null,
+      "concurrent_vs_sequential_relative_error": null,
+      "fused_batch_vs_batch1_relative_error": null,
+      "fused_batch_accepted_at_1e-4": null,
+      "translated_residual_l2": 1523.6419677734375,
+      "logits_finite": true,
+      "last_token_argmax": 7785
+    },
+    {
+      "direction": "A_to_B",
+      "switch_layer": 8,
+      "parent_gate_relative_error": 0.0,
+      "direct_gate_relative_error": null,
+      "direct_vs_hook_relative_error": null,
+      "concurrent_vs_sequential_relative_error": null,
+      "fused_batch_vs_batch1_relative_error": null,
+      "fused_batch_accepted_at_1e-4": null,
+      "translated_residual_l2": 2600.033935546875,
+      "logits_finite": true,
+      "last_token_argmax": 7785
+    },
+    {
+      "direction": "A_to_B",
+      "switch_layer": 16,
+      "parent_gate_relative_error": 0.0,
+      "direct_gate_relative_error": null,
+      "direct_vs_hook_relative_error": null,
+      "concurrent_vs_sequential_relative_error": null,
+      "fused_batch_vs_batch1_relative_error": null,
+      "fused_batch_accepted_at_1e-4": null,
+      "translated_residual_l2": 2897.1494140625,
+      "logits_finite": true,
+      "last_token_argmax": 7785
+    },
+    {
+      "direction": "A_to_B",
+      "switch_layer": 24,
+      "parent_gate_relative_error": 0.0,
+      "direct_gate_relative_error": null,
+      "direct_vs_hook_relative_error": null,
+      "concurrent_vs_sequential_relative_error": null,
+      "fused_batch_vs_batch1_relative_error": null,
+      "fused_batch_accepted_at_1e-4": null,
+      "translated_residual_l2": 3128.6181640625,
+      "logits_finite": true,
+      "last_token_argmax": 7785
+    },
+    {
+      "direction": "B_to_A",
+      "switch_layer": 4,
+      "parent_gate_relative_error": 0.0,
+      "direct_gate_relative_error": 0.0,
+      "direct_vs_hook_relative_error": 0.0,
+      "concurrent_vs_sequential_relative_error": 0.0,
+      "fused_batch_vs_batch1_relative_error": 0.0017829516178641302,
+      "fused_batch_accepted_at_1e-4": false,
+      "translated_residual_l2": 1536.7490234375,
+      "logits_finite": true,
+      "last_token_argmax": 7785
+    },
+    {
+      "direction": "B_to_A",
+      "switch_layer": 8,
+      "parent_gate_relative_error": 0.0,
+      "direct_gate_relative_error": 0.0,
+      "direct_vs_hook_relative_error": 0.0,
+      "concurrent_vs_sequential_relative_error": 0.0,
+      "fused_batch_vs_batch1_relative_error": 0.001179553273750058,
+      "fused_batch_accepted_at_1e-4": false,
+      "translated_residual_l2": 1191.830322265625,
+      "logits_finite": true,
+      "last_token_argmax": 7785
+    },
+    {
+      "direction": "B_to_A",
+      "switch_layer": 16,
+      "parent_gate_relative_error": 0.0,
+      "direct_gate_relative_error": 0.0,
+      "direct_vs_hook_relative_error": 0.0,
+      "concurrent_vs_sequential_relative_error": 0.0,
+      "fused_batch_vs_batch1_relative_error": 0.0012178758785294974,
+      "fused_batch_accepted_at_1e-4": false,
+      "translated_residual_l2": 1546.342041015625,
+      "logits_finite": true,
+      "last_token_argmax": 7785
+    },
+    {
+      "direction": "B_to_A",
+      "switch_layer": 24,
+      "parent_gate_relative_error": 0.0,
+      "direct_gate_relative_error": 0.0,
+      "direct_vs_hook_relative_error": 0.0,
+      "concurrent_vs_sequential_relative_error": 0.0,
+      "fused_batch_vs_batch1_relative_error": 0.0008314480254296197,
+      "fused_batch_accepted_at_1e-4": false,
+      "translated_residual_l2": 699.42822265625,
+      "logits_finite": true,
+      "last_token_argmax": 7785
+    }
+  ]
+}

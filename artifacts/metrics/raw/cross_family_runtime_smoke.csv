@@ -1,0 +1,9 @@
+direction,switch_layer,parent_gate_relative_error,direct_gate_relative_error,direct_vs_hook_relative_error,concurrent_vs_sequential_relative_error,fused_batch_vs_batch1_relative_error,fused_batch_accepted_at_1e-4,translated_residual_l2,logits_finite,last_token_argmax
+A_to_B,4,0.0,,,,,,1523.6419677734375,True,7785
+A_to_B,8,0.0,,,,,,2600.033935546875,True,7785
+A_to_B,16,0.0,,,,,,2897.1494140625,True,7785
+A_to_B,24,0.0,,,,,,3128.6181640625,True,7785
+B_to_A,4,0.0,0.0,0.0,0.0,0.0017829516178641302,False,1536.7490234375,True,7785
+B_to_A,8,0.0,0.0,0.0,0.0,0.001179553273750058,False,1191.830322265625,True,7785
+B_to_A,16,0.0,0.0,0.0,0.0,0.0012178758785294974,False,1546.342041015625,True,7785
+B_to_A,24,0.0,0.0,0.0,0.0,0.0008314480254296197,False,699.42822265625,True,7785

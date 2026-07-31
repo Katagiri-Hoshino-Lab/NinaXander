@@ -1,0 +1,7 @@
+direction,source_model,target_model,config,switch_layer,transformer_layers,kv_kib_per_token,kv_gib_at_context,context_tokens,kv_reduction_fraction,measured_kib_per_token_per_layer,rwkv_state_kib_per_layer,probe_sequence_tokens
+A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,pure-Pythia,,32,512.0,2.0,4096,0.0,16.0,40.0,128
+A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,A_to_B@4,4,27,432.0,1.6875,4096,0.15625,16.0,40.0,128
+A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,A_to_B@8,8,23,368.0,1.4375,4096,0.28125,16.0,40.0,128
+A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,A_to_B@16,16,15,240.0,0.9375,4096,0.53125,16.0,40.0,128
+A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,A_to_B@24,24,7,112.0,0.4375,4096,0.78125,16.0,40.0,128
+A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,pure-RWKV,,0,0.0,0.0,4096,1.0,16.0,40.0,128

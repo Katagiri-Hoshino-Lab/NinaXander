@@ -1,0 +1,11 @@
+execution_path,producer_path,source_model,target_model,config,switch_layer,transformer_layers,kv_kib_per_token,kv_gib_at_context,context_tokens,kv_reduction_fraction,measured_kib_per_token_per_layer,rwkv_state_kib_per_layer,probe_sequence_tokens,arc_easy_accuracy_norm,sciq_accuracy_norm,source_file
+A_parent,A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,pure-RWKV,,0,0.0,0.0,4096,1.0,16.0,40.0,128,0.6178451178451179,0.67,a_to_b_kv_cache.csv
+B_parent,A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,pure-Pythia,,32,512.0,2.0,4096,0.0,16.0,40.0,128,0.6531986531986532,0.81,a_to_b_kv_cache.csv
+A_to_B,A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,A_to_B@4,4,27,432.0,1.6875,4096,0.15625,16.0,40.0,128,0.5959595959595959,0.709,a_to_b_kv_cache.csv
+B_to_A,B_to_A,Tulu-Pythia-6.9B,RWKV-Raven-7B,B_to_A@4,4,5,80.0,0.3125,4096,0.84375,16.0,40.0,128,0.6220538720538721,0.692,b_to_a_kv_cache.csv
+A_to_B,A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,A_to_B@8,8,23,368.0,1.4375,4096,0.28125,16.0,40.0,128,0.5896464646464646,0.677,a_to_b_kv_cache.csv
+B_to_A,B_to_A,Tulu-Pythia-6.9B,RWKV-Raven-7B,B_to_A@8,8,9,144.0,0.5625,4096,0.71875,16.0,40.0,128,0.5728114478114478,0.646,b_to_a_kv_cache.csv
+A_to_B,A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,A_to_B@16,16,15,240.0,0.9375,4096,0.53125,16.0,40.0,128,0.4861111111111111,0.545,a_to_b_kv_cache.csv
+B_to_A,B_to_A,Tulu-Pythia-6.9B,RWKV-Raven-7B,B_to_A@16,16,17,272.0,1.0625,4096,0.46875,16.0,40.0,128,0.5749158249158249,0.68,b_to_a_kv_cache.csv
+A_to_B,A_to_B,RWKV-Raven-7B,Tulu-Pythia-6.9B,A_to_B@24,24,7,112.0,0.4375,4096,0.78125,16.0,40.0,128,0.4696969696969697,0.511,a_to_b_kv_cache.csv
+B_to_A,B_to_A,Tulu-Pythia-6.9B,RWKV-Raven-7B,B_to_A@24,24,25,400.0,1.5625,4096,0.21875,16.0,40.0,128,0.5959595959595959,0.699,b_to_a_kv_cache.csv

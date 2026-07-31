@@ -1,0 +1,117 @@
+{
+  "adapter": "SNAP_L32_final.pt",
+  "step": 415000,
+  "directions": [
+    "A_to_B",
+    "B_to_A"
+  ],
+  "layers": [
+    4,
+    10,
+    16,
+    22,
+    28
+  ],
+  "rows_per_layer": 100800,
+  "fit_rows": 50400,
+  "rows": {
+    "A_to_B": {
+      "4": {
+        "adapter_cross_r2": 0.5653063233939999,
+        "linearised_fit_r2": 0.8708894650628878,
+        "linearised_cross_r2": 0.4973629294033838,
+        "best_affine_cross_r2": 0.48925090888082445,
+        "ridge_imitate": 50.280621698885525,
+        "ridge_direct": 50.280621698885525
+      },
+      "10": {
+        "adapter_cross_r2": 0.5597926767836756,
+        "linearised_fit_r2": 0.8641488582420785,
+        "linearised_cross_r2": 0.4890403469150204,
+        "best_affine_cross_r2": 0.490856305925233,
+        "ridge_imitate": 50.14496005068204,
+        "ridge_direct": 50.14496005068204
+      },
+      "16": {
+        "adapter_cross_r2": 0.5685418734095349,
+        "linearised_fit_r2": 0.8649789629412865,
+        "linearised_cross_r2": 0.4975564068437661,
+        "best_affine_cross_r2": 0.498147423712899,
+        "ridge_imitate": 50.164651549305326,
+        "ridge_direct": 50.164651549305326
+      },
+      "22": {
+        "adapter_cross_r2": 0.5717897320078626,
+        "linearised_fit_r2": 0.8654183467893073,
+        "linearised_cross_r2": 0.4988992024953628,
+        "best_affine_cross_r2": 0.4937761010451096,
+        "ridge_imitate": 50.289032390236635,
+        "ridge_direct": 50.289032390236635
+      },
+      "28": {
+        "adapter_cross_r2": 0.525816758921984,
+        "linearised_fit_r2": 0.8669030880228487,
+        "linearised_cross_r2": 0.4646679001711198,
+        "best_affine_cross_r2": 0.4647513355454008,
+        "ridge_imitate": 50.46564871415821,
+        "ridge_direct": 50.46564871415821
+      }
+    },
+    "B_to_A": {
+      "4": {
+        "adapter_cross_r2": 0.5440890269964789,
+        "linearised_fit_r2": 0.8749136802348104,
+        "linearised_cross_r2": 0.4820445235157146,
+        "best_affine_cross_r2": 0.4744166015145498,
+        "ridge_imitate": 50.480814307248664,
+        "ridge_direct": 50.480814307248664
+      },
+      "10": {
+        "adapter_cross_r2": 0.5309952756142426,
+        "linearised_fit_r2": 0.875941252868301,
+        "linearised_cross_r2": 0.47547938095603304,
+        "best_affine_cross_r2": 0.49835945795693715,
+        "ridge_imitate": 50.20262964333883,
+        "ridge_direct": 50.20262964333883
+      },
+      "16": {
+        "adapter_cross_r2": 0.6006639457407006,
+        "linearised_fit_r2": 0.8903708088468612,
+        "linearised_cross_r2": 0.5449991039978999,
+        "best_affine_cross_r2": 0.568191177150333,
+        "ridge_imitate": 50.29125651882795,
+        "ridge_direct": 50.29125651882795
+      },
+      "22": {
+        "adapter_cross_r2": 0.6199865926022877,
+        "linearised_fit_r2": 0.8842425892504092,
+        "linearised_cross_r2": 0.5558716239323456,
+        "best_affine_cross_r2": 0.5799088878662113,
+        "ridge_imitate": 50.57918864516082,
+        "ridge_direct": 50.57918864516082
+      },
+      "28": {
+        "adapter_cross_r2": 0.5846848494781866,
+        "linearised_fit_r2": 0.8767740047843721,
+        "linearised_cross_r2": 0.5219102628345506,
+        "best_affine_cross_r2": 0.5565820096427511,
+        "ridge_imitate": 50.70589942517284,
+        "ridge_direct": 50.70589942517284
+      }
+    }
+  },
+  "mean": {
+    "A_to_B": {
+      "adapter_cross_r2": 0.5582494729034113,
+      "linearised_fit_r2": 0.8664677442116817,
+      "linearised_cross_r2": 0.4895053571657305,
+      "best_affine_cross_r2": 0.4873564150218934
+    },
+    "B_to_A": {
+      "adapter_cross_r2": 0.5760839380863793,
+      "linearised_fit_r2": 0.8804484671969508,
+      "linearised_cross_r2": 0.5160609790473087,
+      "best_affine_cross_r2": 0.5354916268261565
+    }
+  }
+}

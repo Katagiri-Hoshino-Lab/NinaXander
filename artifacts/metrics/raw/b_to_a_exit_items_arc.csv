@@ -1,0 +1,5 @@
+direction,source_model,target_model,task,config,config_type,switch_layer,transformer_blocks,accuracy_sum,accuracy_norm,n_items,chance,source_file
+B_to_A,Tulu-Pythia-6.9B,RWKV-Raven-7B,arc_easy,B_early_exit@5,early_exit,4,5,,0.2680976430976431,2376,0.25,b_to_a_exit_items_arc.json
+B_to_A,Tulu-Pythia-6.9B,RWKV-Raven-7B,arc_easy,B_early_exit@9,early_exit,8,9,,0.2967171717171717,2376,0.25,b_to_a_exit_items_arc.json
+B_to_A,Tulu-Pythia-6.9B,RWKV-Raven-7B,arc_easy,B_early_exit@17,early_exit,16,17,,0.40614478114478114,2376,0.25,b_to_a_exit_items_arc.json
+B_to_A,Tulu-Pythia-6.9B,RWKV-Raven-7B,arc_easy,B_early_exit@25,early_exit,24,25,,0.5753367003367004,2376,0.25,b_to_a_exit_items_arc.json

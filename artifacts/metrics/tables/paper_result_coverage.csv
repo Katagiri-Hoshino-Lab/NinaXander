@@ -1,0 +1,13 @@
+table,count_unit,A_parent,A_to_A,A_to_B,B_parent,B_to_B,B_to_A,B_early_exit,cross_path,ab_ba_matched,four_path_applicable,four_path_complete
+paper_four_path_qa_accuracy.csv,rows,0,8,8,0,8,8,0,0,True,True,True
+paper_cross_family_qa_accuracy.csv,rows,2,8,24,2,8,24,16,0,True,True,True
+paper_representation.csv,rows,0,1,1,0,1,1,0,0,True,True,True
+paper_cross_family_linearity.csv,rows,0,0,6,0,0,6,0,0,True,False,
+paper_cross_family_domain_shift.csv,rows,6,0,48,6,0,48,0,0,True,False,
+paper_layer_metrics.csv,metric_cells,0,34,34,0,34,34,0,0,True,True,True
+paper_cross_family_mlp_intervention.csv,rows,0,0,41,0,0,41,0,0,True,False,
+paper_cross_family_paired_statistics.csv,rows,0,0,56,0,0,56,0,8,True,False,
+paper_cross_family_serving.csv,rows,10,0,20,10,0,20,16,0,True,False,
+paper_training_curve.csv,metric_cells,0,417,417,0,417,417,0,0,True,True,True
+paper_cross_family_generation_samples.csv,rows,4,0,4,4,0,4,0,0,True,False,
+paper_cross_family_memory_accuracy.csv,rows,1,0,4,1,0,4,0,0,True,False,

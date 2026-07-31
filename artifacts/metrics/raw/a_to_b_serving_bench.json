@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "direction": "A_to_B",
+  "source_model": "RWKV-Raven-7B",
+  "target_model": "Tulu-Pythia-6.9B",
+  "implementation": "unpruned_full_parent_reforward",
+  "adapter": "SNAP_L32_final.pt",
+  "checkpoint_step": 415000,
+  "checkpoint_a_to_b_r2": 0.5587504604392047,
+  "switches": [
+    4,
+    8,
+    16,
+    24
+  ],
+  "contexts": [
+    512,
+    2048
+  ],
+  "decode_context": 512,
+  "decode_tokens": 16,
+  "repetitions": 3,
+  "measurement_provenance": {
+    "kind": "legacy_metadata_enrichment",
+    "metrics_recomputed": false,
+    "metrics_unchanged": true,
+    "source_script": "experiments/a_to_b_serving_bench_mp.py",
+    "unpersisted_runtime_checks": [
+      "parent_reproduction_relative_error"
+    ]
+  },
+  "weights_MiB": {
+    "rwkv_devA": 14100.859375,
+    "pythia_adapter_devB": 14103.2353515625
+  },
+  "prefill": {
+    "512": {
+      "pure-Pythia": {
+        "ms": 98.78120757639408,
+        "peak_devA_MiB": 14108.984375,
+        "peak_devB_MiB": 14422.8828125
+      },
+      "pure-RWKV": {
+        "ms": 6538.237692788243,
+        "peak_devA_MiB": 14174.98828125,
+        "peak_devB_MiB": 14112.87890625
+      },
+      "A_to_B@4": {
+        "ms": 6661.413436755538,
+        "peak_devA_MiB": 14294.98828125,
+        "peak_devB_MiB": 14426.8828125
+      },
+      "A_to_B@8": {
+        "ms": 6674.449376761913,
+        "peak_devA_MiB": 14294.98828125,
+        "peak_devB_MiB": 14426.8828125
+      },
+      "A_to_B@16": {
+        "ms": 6653.525911271572,
+        "peak_devA_MiB": 14294.98828125,
+        "peak_devB_MiB": 14426.8828125
+      },
+      "A_to_B@24": {
+        "ms": 6662.358161062002,
+        "peak_devA_MiB": 14294.98828125,
+        "peak_devB_MiB": 14426.8828125
+      }
+    },
+    "2048": {
+      "pure-Pythia": {
+        "ms": 385.47067530453205,
+        "peak_devA_MiB": 14108.984375,
+        "peak_devB_MiB": 15349.29296875
+      },
+      "pure-RWKV": {
+        "ms": 25933.40357206762,
+        "peak_devA_MiB": 14367.0,
+        "peak_devB_MiB": 14112.87890625
+      },
+      "A_to_B@4": {
+        "ms": 26404.51119840145,
+        "peak_devA_MiB": 14847.0,
+        "peak_devB_MiB": 15365.29296875
+      },
+      "A_to_B@8": {
+        "ms": 26390.362294390798,
+        "peak_devA_MiB": 14847.0,
+        "peak_devB_MiB": 15365.29296875
+      },
+      "A_to_B@16": {
+        "ms": 26385.834662243724,
+        "peak_devA_MiB": 14847.0,
+        "peak_devB_MiB": 15365.29296875
+      },
+      "A_to_B@24": {
+        "ms": 26410.762568935752,
+        "peak_devA_MiB": 14847.0,
+        "peak_devB_MiB": 15365.29296875
+      }
+    }
+  },
+  "decode": {
+    "pure-Pythia": {
+      "tok_per_s": 9.362155328346486,
+      "ms_per_token": 106.8130109924823
+    },
+    "pure-RWKV": {
+      "tok_per_s": 0.15076482910777697,
+      "ms_per_token": 6632.846705149859
+    },
+    "A_to_B@4": {
+      "tok_per_s": 0.14767418216751765,
+      "ms_per_token": 6771.664385218173
+    },
+    "A_to_B@8": {
+      "tok_per_s": 0.14774220482695752,
+      "ms_per_token": 6768.546612467617
+    },
+    "A_to_B@16": {
+      "tok_per_s": 0.14776622917039448,
+      "ms_per_token": 6767.446158803068
+    },
+    "A_to_B@24": {
+      "tok_per_s": 0.14775406323371107,
+      "ms_per_token": 6768.003384233452
+    }
+  }
+}
