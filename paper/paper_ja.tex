@@ -44,7 +44,7 @@
 
 \begin{abstract}
 \kw{NinaXander} は，異なる事前学習系統の凍結層を，共有潜在アダプタを介して接続する言語モデルである。本研究では，
-RWKV-Raven-7B（再帰型）と Tulu-Pythia-6.9b（Transformer 型）を対象に，対応層間の表現が単純な変換で接続可能か，
+RWKV-4-Raven-7B（再帰型）と Tulu-Pythia-6.9b（Transformer 型）を対象に，対応層間の表現が単純な変換で接続可能か，
 またその接続が機能的な合成に使えるかを検証する。主な結果は四つである。
 \emph{(i)} 同一トークナイザ・幅・層数・学習領域という条件下で，中心化潜在相関
 $\rho_{\mathrm{ctr}}{=}0.901$ を得た。行対応をシャッフルすると整合は消失する一方，生表現の CKA は同一層で最大にならず，
@@ -180,7 +180,7 @@ $h_A{=}\mathrm{unstd}_A(D_A(\mathrm{LN}(E_B(\mathrm{std}_B(h_B)))))$ を RWKV �
 EOS 出力時のみ早期終了）による生成例，多肢選択の正答率，および次トークン交差エントロピーで評価する。
 
 \section{対応層間には学習可能な共通表現がある（好条件下）}\label{sec:space}
-$7$B 指示追従モデルのペア RWKV-Raven-7B（純 RNN）$\leftrightarrow$ Tulu-Pythia-6.9b（Transformer）は，ともに $32$ ブロック，
+$7$B 指示追従モデルのペア RWKV-4-Raven-7B（純 RNN）$\leftrightarrow$ Tulu-Pythia-6.9b（Transformer）は，ともに $32$ ブロック，
 $d{=}4096$，共有 GPT-NeoX トークナイザ，指示形式テキスト（Alpaca）で整合すると，残差ブロック 1 個のアダプタが
 未学習の文章における中心化潜在相関 $\rho_{\mathrm{ctr}}\!=\!0.901$ に達する。生の相関（$0.97$）は共通モードにより
 高くなり得るため，それ自体は証拠としない。中心化相関 $0.901$ と，各復号器が自系統の残差を再構成できること
@@ -696,7 +696,7 @@ Manticore~\cite{roberts2025pretrained} は Transformer と Mamba のブロック
 \emph{同一または互換な}重みを前提とする。出力分布を融合する FuseLLM~\cite{wan2024knowledge} は重みの互換を要しないが，
 語彙間のトークン整列と対象モデルの継続学習を必要とする。本研究は重みを
 一切マージせず\emph{活性化空間}を翻訳して凍結ブロックを組み替える点で相補的である。
-\paragraph{対象モデル.}RWKV~\cite{peng-etal-2023-rwkv} は softmax 自己注意を持たず推論時に純粋な再帰として動作するアーキテクチャ，Pythia~\cite{3618408.3618510} とその Tulu SFT
+\paragraph{対象モデル.}RWKV~\cite{peng-etal-2023-rwkv} は softmax 自己注意を持たず推論時に純粋な再帰として動作するアーキテクチャであり，本研究ではその第 4 世代の指示追従版 RWKV-4-Raven-7B を用いる。Pythia~\cite{3618408.3618510} とその Tulu SFT
 版は Transformer である。両者が GPT-NeoX トークナイザを共有することが，位置対応した残差ペアを可能にしている。
 
 \section{考察}\label{sec:discussion}
@@ -741,7 +741,7 @@ $n$-gram による監査までは行っていない。性能は\kw{全評価集�
 \appendices
 \section{再現情報}\label{sec:repro}
 \begin{itemize}\setlength{\itemsep}{1pt}
-\item \kw{モデル}：RWKV-Raven-7B（BlinkDL \texttt{.pth} を HF 形式へ変換し fp16 再保存）と
+\item \kw{モデル}：RWKV-4-Raven-7B（BlinkDL \texttt{.pth} を HF 形式へ変換し fp16 再保存）と
 \texttt{allenai/open-instruct-pythia-6.9b-tulu}（fp16）。ともに $32$ 層，$d{=}4096$，GPT-NeoX-20B トークナイザ。
 \item \kw{アダプタ}：$z{=}d{=}4096$，残差ブロック $1$（内部幅 $4096$，第 $2$ 行列ゼロ初期化），非アフィン LN，
 $\sigma{=}0.4$，$\lambda{=}1$，$268.5$M パラメータ。AdamW，$4{\times}$V100 で有効バッチ $4096$，学習率 $10^{-3}\!\to\!10^{-5}$

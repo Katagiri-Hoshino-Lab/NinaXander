@@ -43,7 +43,7 @@ Daichi Mukunoki\IEEEauthorrefmark{2}, Tetsuya Hoshino\IEEEauthorrefmark{2}, Taka
 
 \begin{abstract}
 \kw{NinaXander} is a language model that connects frozen layers from different pretraining
-families through a shared-latent adapter. Using RWKV-Raven-7B (recurrent) and
+families through a shared-latent adapter. Using RWKV-4-Raven-7B (recurrent) and
 Tulu-Pythia-6.9b (Transformer), we test whether representations at corresponding layers
 can be connected by a simple transformation, and whether that connection supports
 functional composition. There are four main results.
@@ -187,7 +187,7 @@ For the chimeras, we give English prompts verbatim and evaluate with generation 
 early stopping only on EOS output), multiple-choice accuracy, and next-token cross-entropy.
 
 \section{A Learnable Shared Representation Exists Between Corresponding Layers (Under Favorable Conditions)}\label{sec:space}
-For the pair of $7$B instruction-following models RWKV-Raven-7B (pure RNN) $\leftrightarrow$ Tulu-Pythia-6.9b (Transformer), both with $32$ blocks,
+For the pair of $7$B instruction-following models RWKV-4-Raven-7B (pure RNN) $\leftrightarrow$ Tulu-Pythia-6.9b (Transformer), both with $32$ blocks,
 $d{=}4096$, and a shared GPT-NeoX tokenizer, aligning on instruction-formatted text (Alpaca) lets an adapter consisting of 1 residual block
 reach a centered latent correlation of $\rho_{\mathrm{ctr}}\!=\!0.901$ on unseen text. Because the raw correlation ($0.97$) can be inflated by the
 common mode, we do not take it as evidence by itself. We take the centered correlation of $0.901$, together with the fact that each decoder can reconstruct residuals of its own family
@@ -701,7 +701,7 @@ similarity between networks. Our work uses them as auxiliary metrics (the all-la
 presuppose \emph{identical or compatible} weights. FuseLLM~\cite{wan2024knowledge}, which fuses output distributions, does not require weight compatibility,
 but it needs token alignment across vocabularies and continued training of the target model. Our work is complementary in that it merges
 no weights at all and instead translates the \emph{activation space} to recombine frozen blocks.
-\paragraph{Target models.} RWKV~\cite{peng-etal-2023-rwkv} is an architecture that has no softmax self-attention and operates as a pure recurrence at inference time; Pythia~\cite{3618408.3618510} and its Tulu SFT
+\paragraph{Target models.} RWKV~\cite{peng-etal-2023-rwkv} is an architecture that has no softmax self-attention and operates as a pure recurrence at inference time; this work uses its fourth-generation instruction-following variant, RWKV-4-Raven-7B. Pythia~\cite{3618408.3618510} and its Tulu SFT
 variant are Transformers. The fact that the two share the GPT-NeoX tokenizer is what makes position-aligned residual pairs possible.
 
 \section{Discussion}\label{sec:discussion}
@@ -747,7 +747,7 @@ are left for future work.
 
 \section{Reproduction Information}\label{sec:repro}
 \begin{itemize}\setlength{\itemsep}{1pt}
-\item \kw{Models}: RWKV-Raven-7B (BlinkDL \texttt{.pth} converted to HF format and re-saved in fp16) and
+\item \kw{Models}: RWKV-4-Raven-7B (BlinkDL \texttt{.pth} converted to HF format and re-saved in fp16) and
 \texttt{allenai/open-instruct-pythia-6.9b-tulu} (fp16). Both have $32$ layers, $d{=}4096$, and the GPT-NeoX-20B tokenizer.
 \item \kw{Adapter}: $z{=}d{=}4096$, $1$ residual block (inner width $4096$, second matrix zero-initialized), non-affine LN,
 $\sigma{=}0.4$, $\lambda{=}1$, $268.5$M parameters. AdamW, effective batch $4096$ on $4{\times}$V100, learning rate $10^{-3}\!\to\!10^{-5}$
