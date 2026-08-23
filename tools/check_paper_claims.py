@@ -144,44 +144,11 @@ def main():
         f"${comma(last_step)}$ 反復走行（報告チェックポイントは保留 $A\\!\\to\\!B$ 最良の ${comma(best_step)}$ 反復）",
     )
     check("reported checkpoint", f"最深点（${comma(best_step)}$ 反復）のチェックポイント")
-    check(
-        "late-training f",
-        f"$f$ が ${fmt(float(curve[85000]['latent_f']), 3)}\\!\\to\\!{fmt(float(curve[best_step]['latent_f']), 3)}$ と増える",
-    )
-    check(
-        "late-training rho",
-        f"$\\rho_{{\\mathrm{{ctr}}}}$ は ${fmt(float(curve[85000]['latent_rho_centered']), 3)}\\!\\to\\!{fmt(float(curve[best_step]['latent_rho_centered']), 3)}$ へ",
-    )
-    check(
-        "f trajectory",
-        f"反復でも $f$ は ${fmt(float(curve[25000]['latent_f']), 3)}$，$85{{,}}000$ 反復で ${fmt(float(curve[85000]['latent_f']), 3)}$ にとどまり，最深値 ${fmt(float(curve[best_step]['latent_f']), 3)}$ に達する",
-    )
-    check("f at 1000", f"（$1{{,}}000$ 反復で $f{{=}}{fmt(float(curve[1000]['latent_f']), 3)}$）")
-    check("f at step 0", f"$0$ 反復目において $f{{=}}{fmt(float(curve[0]['latent_f']), 3)}$")
-    step0 = "/".join(
-        fmt(float(curve[0][c]), 3)
-        for c in ("eval_a_to_a_r2", "eval_a_to_b_r2", "eval_b_to_b_r2", "eval_b_to_a_r2")
-    )
-    check("step-0 readouts", f"${step0}$）")
-    check(
-        "58k-66k f and rho",
-        f"${fmt(float(curve[58000]['latent_f']), 3)}\\!\\to\\!{fmt(float(curve[66000]['latent_f']), 3)}$ へ増え，"
-        f"$\\rho_{{\\mathrm{{ctr}}}}$（${fmt(float(curve[58000]['latent_rho_centered']), 3)}\\!\\to\\!{fmt(float(curve[66000]['latent_rho_centered']), 3)}$）",
-    )
-    for macro, column in (
-        ("\\RWKVself{}", "eval_a_to_a_r2"),
-        ("\\RtoP{}", "eval_a_to_b_r2"),
-        ("\\Pythiaself{}", "eval_b_to_b_r2"),
-        ("\\PtoR{}", "eval_b_to_a_r2"),
-    ):
-        check(
-            f"58k-66k {column}",
-            f"{macro} ${fmt(float(curve[58000][column]), 3)}\\!\\to\\!{fmt(float(curve[66000][column]), 3)}$",
-        )
-    check(
-        "58k-66k rho_raw",
-        f"$\\rho_{{\\mathrm{{raw}}}}$ は ${fmt(float(curve[58000]['latent_rho_raw']), 4)}$ から ${fmt(float(curve[66000]['latent_rho_raw']), 4)}$ へ",
-    )
+    # The paper no longer prints the common-mode training-dynamics analysis, the
+    # equal-KV early-exit baseline, or the pruned-runtime / serving-timing figures,
+    # so the fragments that pinned them are gone. The underlying tables are still
+    # produced and validated by tools/validate_results.py; re-add the checks here if
+    # those paragraphs come back.
 
     corr = load(table_dir, "paper_layer_correspondence.csv")
     diag = [float(r["linear_cka"]) for r in corr if r["source_layer"] == r["target_layer"]]
@@ -375,27 +342,6 @@ def main():
         ),
     )
 
-    exits = {}
-    for r in pairs:
-        if r["comparison_family"] == "equal_memory":
-            chimera = r["config_b"] if r["config_b"] != r["config_a"] and "exit" not in r["config_b"] else r["config_a"]
-            diff = (float(r["accuracy_b"]) - float(r["accuracy_a"])) * 100
-            if "exit" in r["config_b"]:
-                diff = -diff
-            exits[(chimera, r["task"])] = (diff, float(r["mcnemar_p"]))
-    check(
-        "AB equal-memory deep",
-        f"ARC ${signed(fmt(exits[('A_to_B@16', 'arc_easy')][0], 1))}/{signed(fmt(exits[('A_to_B@24', 'arc_easy')][0], 1))}$，"
-        f"SciQ ${signed(fmt(exits[('A_to_B@16', 'sciq')][0], 1))}/{signed(fmt(exits[('A_to_B@24', 'sciq')][0], 1))}$ 点上回る",
-    )
-    ba_exit_arc = "/".join(signed(fmt(exits[(f'B_to_A@{l}', 'arc_easy')][0], 1)) for l in (4, 8, 16, 24))
-    ba_exit_sciq = "/".join(signed(fmt(exits[(f'B_to_A@{l}', 'sciq')][0], 1)) for l in (4, 8, 16, 24))
-    check("BA equal-memory", f"ARC ${ba_exit_arc}$，SciQ ${ba_exit_sciq}$ 点")
-    check(
-        "BA equal-memory @24 ties",
-        f"（ARC $p{{=}}{fmt_p(exits[('B_to_A@24', 'arc_easy')][1])}$，SciQ $p{{=}}{fmt_p(exits[('B_to_A@24', 'sciq')][1])}$）",
-    )
-
     mem = {r["config"]: r for r in load(table_dir, "paper_cross_family_memory_accuracy.csv")}
     ba4, parent_b, parent_a = mem["B_to_A@4"], mem["pure-Pythia"], mem["pure-RWKV"]
     check(
@@ -403,11 +349,6 @@ def main():
         f"KV を ${fmt(float(ba4['kv_reduction_fraction']) * 100, 1)}\\%$ 削減しつつ，"
         f"ARC-Easy ${fmt(float(ba4['arc_easy_accuracy_norm']) * 100, 1)}\\%$，"
         f"SciQ ${fmt(float(ba4['sciq_accuracy_norm']) * 100, 1)}\\%$ を保つ",
-    )
-    check(
-        "measured KV",
-        f"層あたり ${fmt(float(parent_b['measured_kib_per_token_per_layer']), 1)}$ KiB/token，"
-        f"$32$ 層で ${fmt(float(parent_b['kv_kib_per_token']), 0)}$ KiB/token",
     )
     check("RWKV state size", f"層あたり ${fmt(float(ba4['rwkv_state_kib_per_layer']), 0)}$ KiB（$5$ 状態ベクトル")
     check(
@@ -437,51 +378,6 @@ def main():
         "SciQ frontier membership",
         set(pareto) == {"pure-Pythia", "A_to_B@4", "B_to_A@24", "B_to_A@4", "pure-RWKV"},
         f"pareto = {sorted(pareto)}",
-    )
-
-    serving = load(table_dir, "paper_cross_family_serving.csv")
-    weights = {}
-    for r in serving:
-        if r["benchmark"] == "pruned" and r["weight_mib_total"]:
-            weights[r["config"]] = float(r["weight_mib_total"]) / 1024
-    ab_w = [v for c, v in weights.items() if c.startswith("pruned-A_to_B")]
-    ba_w = [v for c, v in weights.items() if c.startswith("pruned-B_to_A")]
-    exit_w = [weights[f"B_early_exit@{b}"] for b in (5, 9, 17, 25)]
-    check("AB pruned weights", f"常駐重みは \\RtoP{{}} ${fmt(min(ab_w), 2)}$--${fmt(max(ab_w), 2)}$\\,GiB")
-    check(
-        "BA pruned weights",
-        f"\\PtoR{{}} ${fmt(min(ba_w), 2)}$--${fmt(max(ba_w), 2)}$\\,GiB"
-        f"（既定の \\PtoRL{{4}} は ${fmt(weights['pruned-B_to_A@4'], 2)}$\\,GiB）",
-    )
-    check("abstract weights", f"常駐重みは ${fmt(weights['pruned-B_to_A@4'], 2)}$\\,GiB まで減る")
-    if exit_w:
-        check("early-exit weights", f"${fmt(min(exit_w), 2)}$--${fmt(max(exit_w), 2)}$\\,GiB とさらに軽い")
-
-    def timing_row(phase, config, mate_source=None):
-        rows = [
-            r
-            for r in serving
-            if r["phase"] == phase and r["config"] == config
-            and (phase != "prefill" or r["context_tokens"] == "2048")
-            and (r["ms"] or r["tok_per_s"])
-        ]
-        if mate_source:
-            matched = [r for r in rows if r["source_file"] == mate_source]
-            rows = matched or rows
-        return rows[0]
-
-    chimera_prefill = timing_row("prefill", "pruned-B_to_A@4")
-    parent_prefill = timing_row("prefill", "pure-Pythia", chimera_prefill["source_file"])
-    chimera_decode = timing_row("decode", "B_to_A@4")
-    parent_decode = timing_row("decode", "pure-Pythia", chimera_decode["source_file"])
-    check(
-        "prefill seconds",
-        f"剪定後も ${fmt(float(chimera_prefill['ms']) / 1000, 1)}$ 秒"
-        f"（pure Pythia ${fmt(float(parent_prefill['ms']) / 1000, 3)}$ 秒）",
-    )
-    check(
-        "decode throughput",
-        f"${fmt(float(chimera_decode['tok_per_s']), 3)}$ token/s（Pythia ${fmt(float(parent_decode['tok_per_s']), 2)}$",
     )
 
     shift = load(table_dir, "paper_cross_family_domain_shift.csv")
