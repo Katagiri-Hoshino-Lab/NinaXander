@@ -413,6 +413,35 @@ def main():
             f"{{{fmt(ppl[(config, 'alpaca', 512)], 2)}}}{{{fmt(ppl[(config, 'wikitext', 512)], 2)}}}",
         )
 
+    # Evaluation-set exposure: produced by tools/check_eval_leakage.py, which needs no
+    # GPU (it recomputes from the per-item correctness dumps), so a reviewer can rerun it.
+    leak_path = table_dir.parent / "raw" / "eval_leakage.json"
+    if leak_path.exists():
+        leak = json.loads(leak_path.read_text(encoding="utf-8"))
+        counts = leak["matched_counts"]
+        check(
+            "leakage matched counts",
+            f"ARC-Easy ${counts['arc_easy']}$ 問と SciQ ${counts['sciq']}$ 問",
+        )
+        check(
+            "leakage max delta",
+            f"最大 ${fmt(leak['max_abs_delta_points'], 2)}$ 点",
+        )
+        contrast = {
+            (c["task"], c["config"]): c["accuracy_on_matched"] - c["accuracy_on_rest"]
+            for c in leak["parent_contrast"]
+        }
+        check(
+            "leakage unexposed-parent contrast",
+            f"（ARC で ${signed(fmt(contrast[('arc_easy', 'rwkv')], 1))}$ 点，"
+            f"SciQ で ${signed(fmt(contrast[('sciq', 'rwkv')], 1))}$ 点）",
+        )
+        invariant(
+            "leakage does not overturn any comparison",
+            leak["max_abs_delta_points"] < 1.0,
+            f"max |delta| = {leak['max_abs_delta_points']}",
+        )
+
     gen = load(table_dir, "paper_cross_family_generation_samples.csv")
     gen_r2 = {r["execution_path"]: r["adapter_cross_r2"] for r in gen if r["adapter_cross_r2"]}
     for path in ("A_to_B", "B_to_A"):

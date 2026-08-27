@@ -26,10 +26,10 @@
 \newcommand{\PtoRL}[1]{\PtoR{} ($L{=}#1$)}
 \newcommand{\hfrepo}[2]{%
   \href{#1}{%
-    \texttt{https://huggingface.co/kotama7/}\allowbreak\texttt{#2}}}
+    \texttt{https://huggingface.co/Katagiri-Hoshino-Lab/}\allowbreak\texttt{#2}}}
 \newcommand{\hfcollection}[2]{%
   \href{#1}{%
-    \texttt{https://huggingface.co/collections/kotama7/}\allowbreak\texttt{#2}}}
+    \texttt{https://huggingface.co/collections/Katagiri-Hoshino-Lab/}\allowbreak\texttt{#2}}}
 
 \title{\bfseries NinaXander: Composing Frozen Language Models Across Model Families\\ via a Shared Latent Representation --- Conditions and Limits}
 \author{%
@@ -71,17 +71,112 @@ remains a substantial problem.
 \end{abstract}
 
 \section{Introduction}\label{sec:intro}
-This work constructs \kw{NinaXander}\footnote{\emph{NinaXander} derives from the chimera in \emph{Fullmetal Alchemist}---a being formed by fusing the girl Nina and the dog Alexander. The synthesis succeeds and the fusion functions as a chimera, yet it is depicted as inferior to the beings it was made from. The chimera in this work likewise operates but does not reach the stronger parent, and the name alludes to this correspondence.}---a
-\emph{chimera model} that connects frozen blocks from different families through a single trained adapter---and clarifies the conditions under which it succeeds and its limits. Recombining heterogeneous blocks requires a mechanism that
-hands residual representations across families while preserving model function.
+The compute spent on large-scale pretraining survives as weights locked to one architecture. Changing a model's inference
+characteristics---reducing a KV cache that grows with context length, say---normally means pretraining a new hybrid or
+distilling fresh sequence-mixer weights out of an existing model. Both retrain, and so neither reuses the compute already
+spent as a part.
 
-To this end, this work introduces a \kw{shared-latent adapter} and examines two questions. First, does a shared representation exist between corresponding layers of heterogeneous models that can be
-connected by a mapping with few layers? Second, how much function does a chimera built on that representation retain relative to the parent models, and how much inference-memory reduction does it achieve?
+Existing approaches share this constraint. From-scratch hybrids pretrain the whole model; the conversion and distillation
+line trains new sequence-mixer weights. Work that stitches frozen models does exist, but with Transformers on both sides.
+Weight-space merging presupposes compatible weights. \kw{Recomposing finished, frozen checkpoints as parts, across
+families,} remains open.
+
+That is the idea this work tests. If the intermediate representations of independently trained heterogeneous models can be
+translated into each other, existing checkpoints become \kw{frozen reusable parts}. Training one adapter makes many
+composition points available at once, so the accuracy--memory tradeoff can be searched \emph{post hoc}, without retraining.
+This work in fact draws $8$ configurations ($4$ switch positions $\times$ $2$ directions) from a single adapter and
+computes their non-dominated set.
+
+As a first step, this work builds \kw{NinaXander}\footnote{\emph{NinaXander} derives from the chimera in \emph{Fullmetal
+Alchemist}: the synthesis succeeds, but does not reach what it was made from.}---a \emph{chimera model} connecting frozen
+blocks from different families through a single trained adapter---and examines three questions on RWKV-4-Raven-7B and
+Tulu-Pythia-6.9b, a pair favorable in sharing a tokenizer, a width, and a depth. Does cross-family composition hold? How do
+function and KV cost vary with the composition point? What limits the connection?
+
+The result is not a competitive new model: the stronger parent is never surpassed by any configuration. What is shown is
+that post-hoc recomposition of frozen assets is partly possible, and that alignment, decoding, and domain shift are what
+obstruct it. The concrete gain is that a configuration exists which keeps only $5$ Transformer layers, cutting KV by
+$84.4\%$, while retaining part of the multiple-choice accuracy.
 The contributions of this work are (i) alignment measurement with the common mode removed, (ii) a controlled experiment comparing the four paths \RWKVself{}/\RtoP{}/\Pythiaself{}/\PtoR{},
 (iii) an intervention experiment within the same mapping that measures the adapter's nonlinearity for both \RtoP{} and \PtoR{},
 and (iv) measurements of the accuracy, memory, domain generalization, and path asymmetry of a single-boundary chimera model in \RtoP{} and \PtoR{}.
 
+\section{Background and Related Work}\label{sec:related}
+\paragraph{The residual stream and what composition means.} An autoregressive language model updates a per-position
+representation, the residual stream, layer by layer. In a model of width $d$, block $\ell$ has the form
+$h^{(\ell+1)}=h^{(\ell)}+f_\ell(h^{(\ell)})$, with $f_\ell$ performing sequence mixing and channel mixing. Composing at a
+depth boundary $L$ means running one model's blocks $0$ through $L$, then feeding the resulting $h^{(L+1)}$ to the other
+model's block $L{+}1$. Even when width and depth agree, $h^{(L+1)}$ lives in the coordinate system that each model's own
+training fixed, so handing one model's value to the other does not match the distribution the downstream weights expect.
+Whether the composition is possible therefore reduces to whether the residuals of the two families can be translated into
+each other.
+
+\paragraph{The asymmetry in inference cost.} The two families differ in how their inference cost grows. A layer with
+softmax attention must retain the keys and values of every past token, so it needs a cache of $O(T)$ in the context
+length $T$. A layer that can be executed as linear attention, or in an equivalent recurrent form, carries only a
+fixed-size state and is therefore $O(1)$. This asymmetry is what makes the composition worth studying here: which family
+sits upstream and which downstream decides how many Transformer layers remain, and with them how much cache must be kept.
+
+\paragraph{The scale of the residual.} Residual scale differs from layer to layer, and does not agree across families.
+Comparing residuals across layers, and handing them over at a boundary, therefore both require standardization by
+statistics estimated per layer. This is why the adapter in this work is wrapped in per-layer standardization and its
+inverse (\S\ref{sec:method}).
+
+\paragraph{Model stitching.} Connecting the layers of $2$ frozen models through a trainable stitching layer was introduced by
+Lenc and Vedaldi~\cite{10.1007/s11263-018-1098-y} to measure the \emph{equivalence} of representations. They splice the lower
+layers of one frozen CNN onto the upper layers of another with a linear stitching layer and score the resulting
+``Franken-CNN'' by the original task loss, across networks trained on different datasets (ImageNet vs.\ MIT Places) and
+across genuinely different architectures (AlexNet, VGG-16, ResNet-50). Bansal et al.~\cite{3540261.3540279} revisited it as a
+probe for representation comparison, stitching between networks of the same architecture while varying seed, training
+subset, training time, width, and objective (supervised or self-supervised), and noting cross-architecture stitching as an
+open difficulty. Csisz\'arik et al.~\cite{NEURIPS2021_2cb274e6} match the activations of two trained networks with a single affine stitching layer and argue that representational agreement should be judged by \emph{downstream task performance} rather than by a similarity index; our separation of alignment from decodability follows that position. All three are vision models; our work differs in that it stitches different \emph{families} (RNN$\leftrightarrow$Transformer)
+through a shared latent that translates each layer only $1$ time.
+\paragraph{Composing frozen LLMs.} Recent work continues to compose frozen LLMs through trainable connections.
+StitchLLM~\cite{hu-etal-2025-stitchllm} stitches blocks of Transformers of different scales with stitching layers and selects a
+path at serving time, and BTS~\cite{zhang-etal-2025-bts} exchanges hidden states \emph{bidirectionally} between a frozen seed and
+frozen experts branched from that seed, through Experts-into-Hub and Hub-into-Experts stitch layers alternating every few layers.
+CALM~\cite{bansal2024llm} fuses the intermediate representations of 2 frozen Transformers via cross-attention, and
+Manticore~\cite{roberts2025pretrained} runs Transformer and Mamba block sequences \emph{in parallel} behind projections,
+mixes them by a learned convex combination, and fine-tunes the resulting hybrid end-to-end (its embeddings and LM head are
+newly initialized).
+A separate line translates activations between frozen models. Moschella et al.~\cite{moschella2023relative} absorb the transformation separating independently trained latent spaces by re-encoding samples relative to fixed anchors, enabling stitching with no trained translator, and Maiorca et al.~\cite{3666122.3668540} estimate a map between two pretrained latent spaces in closed form from a small semantic correspondence. The affine control in Table~\ref{tab:bench} is the counterpart of such low-capacity direct maps -- a stronger one, in fact, since ours is fitted directly on paired residuals rather than zero-shot -- and the adapter beats it by $8$--$23$ points on \RtoP{} while the gap is small on \PtoR{}, reversing at SciQ @8. Model Alignment Search~\cite{grant2025model} maps activations
+bidirectionally between a frozen recurrent network and a frozen Transformer, but as a measure of representational similarity
+rather than to build a composed model. Chen et al.~\cite{chen2025transferring} map the residual streams of 2 frozen language models into each other
+bidirectionally with an affine map at a single layer, and evaluate the next-token cross-entropy of the composite that runs
+one model's prefix into the other's suffix; their pairs are, however, same-family Transformers sharing a tokenizer, and they
+name the cross-family setting as future work. The Bicameral Model preprint~\cite{flamant2026bicameralmodelbidirectionalhiddenstate}
+couples 2 frozen language models through a bidirectional translation network, but there each model still executes its own
+full stack in parallel. The GoldFinch preprint~\cite{goldstein2024goldfinchhighperformancerwkvtransformer} stacks a Transformer on top of RWKV-6 at a single boundary and
+compresses the KV cache by $756$--$2550\times$, but is trained from scratch rather than composed from pretrained parents. Oozeer et al.~\cite{oozeer2025activation} learn activation maps between frozen LLMs of different families to transfer safety interventions and steering vectors, reporting an affine control as we do, but the transfer stays at a single layer and no composed model is run.
+However, these either have Transformers on both sides, fine-tune the composed model (Manticore), or have at most one
+pretrained parent. The stitching mechanism itself -- one boundary, both directions, frozen parents -- was established by
+Chen et al.~\cite{chen2025transferring} for same-family Transformer pairs sharing a tokenizer, and we do not claim it as
+novel. What we address is the cross-family case they left open. The two models do share a base pretraining corpus -- both
+are trained for roughly one epoch on The Pile -- but share nothing above it: the architectures are unrelated, there is no
+semantic correspondence of depth and no attention state to align, and the instruction-tuning mixtures and prompt formats
+differ, overlapping only in ShareGPT and Code-Alpaca. The question is whether the same stitch holds between a
+linear-attention recurrent model and a Transformer under those conditions. The shared corpus in fact removes a confound:
+composition cannot be called hard merely because the two models saw different distributions. To our knowledge, no prior work composes these two families at a single boundary, with both
+parents and both LM heads frozen, and evaluates the result as a working generator. We further report the KV-cache
+reduction that this composition yields.
+\paragraph{Representation similarity.} CKA~\cite{pmlr-v97-kornblith19a} and (SV/PW)CCA~\cite{3295222.3295356,3327345.3327475} are standard tools for measuring representational
+similarity between networks. Our work uses them as auxiliary metrics (the all-layer correspondence in \S\ref{sec:space}) while placing its main focus on
+\emph{functional, reconstruction-mediated} stitching. On cross-architecture universality itself, Wang et al.~\cite{wang2025towards} report that sparse-autoencoder features and induction circuits are largely similar between Transformers and Mamba, which is prior evidence for the premise of this work (their recurrent family is Mamba, not RWKV).
+\paragraph{Model merging and knowledge fusion.} Methods that merge models in weight space---model soups~\cite{pmlr-v162-wortsman22a}, TIES~\cite{3666122.3666432}, and evolutionary merging~\cite{Akiba2025}---
+presuppose \emph{identical or compatible} weights. FuseLLM~\cite{wan2024knowledge}, which fuses output distributions, does not require weight compatibility,
+but it needs token alignment across vocabularies and continued training of the target model. Our work is complementary in that it merges
+no weights at all and instead translates the \emph{activation space} to recombine frozen blocks.
+
+\paragraph{Target models.} RWKV~\cite{peng-etal-2023-rwkv} replaces softmax dot-product attention with a channel-wise linear-attention (WKV) operator and admits an equivalent recurrent formulation, so inference carries a constant-size per-layer state rather than a KV cache that grows with context length; this work uses its fourth-generation instruction-following variant, RWKV-4-Raven-7B. Pythia~\cite{3618408.3618510} and its Tulu SFT~\cite{3666122.3669390}
+variant are Transformers.
+
 \section{Method}\label{sec:method}
+The subjects are RWKV-4-Raven-7B and Tulu-Pythia-6.9b, selected as instruction-following models that share a depth
+($32$ blocks), a width ($d{=}4096$), and the GPT-NeoX tokenizer. The shared tokenizer is what makes position-aligned
+residual pairs possible, and the matching depth and width make the layer correspondence trivial. These favorable
+conditions were assembled deliberately, and they narrow the scope of the claim in the same measure
+(\S\ref{sec:limitations}).
+
 \paragraph{Residual pairs.} We feed the \emph{same} text to the frozen $A,B$, which share a tokenizer, and pair the
 outputs $r_A^j[t]$ and $r_B^j[t]$ at position $t$ and block $j$, treating both families and all $32$ layers as
 quantities of the same kind (see Appendix~\ref{sec:repro} for the capture implementation).
@@ -151,7 +246,7 @@ and become possible only once the alignment term makes $z_A{\approx}z_B$.}
 
 \paragraph{Adapter architecture.} $E_A,E_B,D_A,D_B$ share an identical form: a linear projection to the latent width, $b$
 pre-norm residual blocks, and a linear projection to the output. The reported configuration is $z{=}d{=}4096$, $b{=}1$, and internal width $h{=}4096$.
-The second matrix of each residual block is \kw{zero-initialized}, so each block is initially the identity map and \emph{the adapter as a whole starts learning
+The second matrix of each residual block is \kw{zero-initialized}, so each block is initially the identity map and \emph{$E$ and $D$ start learning
 from a linear map}. This, however, is a property of the initialization, not of the trained model: as measured in \S\ref{sec:linear}, after convergence
 $13.4\%/12.0\%$ of the output variance of \RtoP{}/\PtoR{} is nonlinear, and the same nonlinear branch serves both cross read-outs.
 Against the parents' combined $14.2$B parameters,
@@ -183,10 +278,17 @@ Each metric is computed per layer over all tokens, and we report the simple mean
 For the chimeras, we give English prompts verbatim and evaluate with generation samples produced by deterministic argmax at temperature $0$ (at most $40$ new tokens,
 early stopping only on EOS output), multiple-choice accuracy, and next-token cross-entropy.
 
-\section{A Learnable Shared Representation Exists Between Corresponding Layers}\label{sec:space}
-For the pair of $7$B instruction-following models RWKV-4-Raven-7B (pure RNN) $\leftrightarrow$ Tulu-Pythia-6.9b (Transformer), both with $32$ blocks,
-$d{=}4096$, and a shared GPT-NeoX tokenizer, aligning on instruction-formatted text (Alpaca) lets an adapter consisting of 1 residual block
-reach a centered latent correlation of $\rho_{\mathrm{ctr}}\!=\!0.901$ on unseen text. In this paper we claim a shared representation on the grounds of the centered
+\section{Results}\label{sec:results}
+We measure from the level of the representation down to downstream function: \S\ref{sec:space} the alignment between
+corresponding layers, \S\ref{sec:ladder} the relation between the cross read-outs and same-family reconstruction,
+\S\ref{sec:linear} the nonlinearity of the adapter, and \S\ref{sec:chimera} and \S\ref{sec:goal} the generation,
+accuracy, and inference memory of the composed chimera.
+
+
+\subsection{A Learnable Shared Representation Exists Between Corresponding Layers}\label{sec:space}
+Aligning the $7$B instruction-following pair of \S\ref{sec:method} on instruction-formatted text
+(Alpaca~\cite{alpaca}) lets an adapter consisting of 1 residual block reach a centered latent correlation of
+$\rho_{\mathrm{ctr}}\!=\!0.901$ on unseen text. In this paper we claim a shared representation on the grounds of the centered
 correlation of $0.901$ together with the fact that each decoder can reconstruct residuals of its own family
 ($A\!\to\!A\ 0.70$, $B\!\to\!B\ 0.71$). Moreover, even the best \emph{linear} map fitted directly
 to each cross read-out task reaches $A\!\to\!B\ 0.487$ and $B\!\to\!A\ 0.535$ (\S\ref{sec:linear}). Hence a large part of the observed predictability cannot be explained by the expressive power of the deep nonlinear map alone.
@@ -241,7 +343,7 @@ The read-out is a centered $\Rsq$, so no token-independent predictor can exceed 
 $0$). Hence $B\!\to\!B=0.711$ cannot be obtained from any constant, which is consistent with $65\%$ of the latent's
 energy being constant.
 
-\section{Both Cross Read-Outs Are Constrained by Same-Family Reconstruction}\label{sec:ladder}
+\subsection{Both Cross Read-Outs Are Constrained by Same-Family Reconstruction}\label{sec:ladder}
 Fig.~\ref{fig:ladder} shows the five measured diagnostic values.
 \[
  \begin{array}{ll}
@@ -283,8 +385,8 @@ and improving only the cross-family step leaves that error in place.
 
 At $z{=}d{=}4096$ the composite map $D\!\circ\!E$ can represent the identity map, and no rank constraint exists. Even so, $B\!\to\!B$ remains at $0.711$. Whether this is a ceiling set by the noise $\sigma$ is unknown, and what is rate-limiting remains an open problem.
 
-\section{The Adapter Is Nonlinear on Both Cross Paths}\label{sec:linear}
-The adapter is a single zero-initialized residual block sandwiched between two linear maps, so training begins from a purely linear map. But that is a property before training,
+\subsection{The Adapter Is Nonlinear on Both Cross Paths}\label{sec:linear}
+The adapter is a single zero-initialized residual block sandwiched between two linear maps, so $E$ and $D$ begin training as linear maps. But that is a property before training,
 not after $415{,}000$ iterations. We measured how linear the adapter at the deepest point actually is,
 for both \RtoP{} and \PtoR{}, on the same $5$ representative layers and the same fit and held-out rows.
 
@@ -338,7 +440,7 @@ $+11.2$--$+36.6$ points for \PtoR{}, and an exact McNemar test on identical ques
 $p<2{\times}10^{-9}$ in all $16$ comparisons. Hence the necessity of the nonlinear branch is not inferred from one path alone:
 it is confirmed directly in both the \RtoP{} and \PtoR{} representations and in downstream accuracy.
 
-\section{Syntactically Plausible Generation, Degraded Factuality}\label{sec:chimera}
+\subsection{Syntactically Plausible Generation, Degraded Factuality}\label{sec:chimera}
 Here we actually compose both cross-family paths at $7$B. At switch layer $L$, we run the prefix parent from block $0$ through $L$
 (a total of $L{+}1$ blocks), translate its residual \emph{once} into the other space via the boundary formula of \S\ref{sec:method},
 and then run the suffix parent's blocks from $L{+}1$ onward together with its language-model head---not a per-block round trip.
@@ -438,12 +540,12 @@ incorrectly with ``hydrogen'', and \PtoR{} drifts into a dialogue format after c
 Thus even cross read-outs of $0.559/0.590$ are not sufficient for factuality. A more faithful chimera requires improving both cross read-outs
 and same-family reconstruction.
 
-\section{Function and Inference-Memory Comparison Against the Parents}\label{sec:goal}
+\subsection{Function and Inference-Memory Comparison Against the Parents}\label{sec:goal}
 Assessing the practical value of NinaXander requires a functional comparison against the frozen parents, not internal-representation metrics alone.
-Here we measure (i) how much performance can be retained relative to the strong parent, (ii) whether the weak parent is surpassed, and (iii) how much memory is saved in exchange.
+Here we measure (i) how much performance can be retained relative to the strong parent, (ii) whether the weak parent is surpassed, and (iii) how much KV cache is saved in exchange.
 
 This comparison is run in a multiple-choice format that computes the log-likelihood of each option and selects the maximum. Because no generation, string matching, or subjective judgment
-is involved, the result is uniquely determined. We used the \kw{full evaluation sets} (ARC-Easy test $2376$, SciQ test $1000$), the $z{=}4096$ adapters at the deepest point
+is involved, the result is uniquely determined. We used the \kw{full evaluation sets} (ARC-Easy~\cite{clark2018thinksolvedquestionanswering} test $2376$, SciQ~\cite{welbl-etal-2017-crowdsourcing} test $1000$), the $z{=}4096$ adapters at the deepest point
 ($415{,}000$ iterations), and four switch positions. Between-configuration comparisons on the same question set are paired data, so
 differences are assessed with \kw{paired tests} (McNemar's exact test and paired bootstrap) rather than independent per-cell binomial SEs. Because the options differ in
 length and sum vs.\ length-normalized scoring can disagree in ranking, both are stored in the structured data, and the main text uses length-normalized scoring for reporting and testing.
@@ -526,7 +628,7 @@ replaces the RWKV prefix simultaneously with a Pythia prefix and cross translati
 \paragraph{The memory effect of composition: the KV cache disappears together with the Transformer layers.}Performance and inference memory must be evaluated jointly,
 because the two families do not have the same inference-time cost. Transformer layers cache key/value per token,
 whereas an RNN layer carries only a recurrent state that is \kw{$O(1)$ in sequence length}. \RtoP{} retains only $31{-}L$ Transformer layers,
-and \PtoR{} only $L{+}1$.
+and \PtoR{} only $L{+}1$. What is reduced is the KV cache, not the resident weights: the adapter itself occupies $0.50$ GiB in fp16, or about $0.25$ GiB if only one direction is kept resident, which is comparable to the reduced KV.
 
 \begin{table*}[!t]\centering\footnotesize
 \caption{Accuracy and inference memory for both \RtoP{}/\PtoR{} paths. KV is measured; the RWKV recurrent state is constant in context length.}\label{tab:kv}
@@ -547,7 +649,7 @@ pure RWKV-Raven & 0 & $0$ & $0$ & $100\%$ & 61.8 / 67.0\\\bottomrule
 \end{table*}
 
 Including \RtoP{}/\PtoR{}, \PtoRL{4} reduces the Transformer layers from $27\to5$ relative to \RtoPL{4} while nearly preserving the two-task average,
-$65.25\%\to65.70\%$. The recurrent state of the replacing RWKV is $40$ KiB per layer (a computed value from $5$ state vectors ${\times}\,4096$ dimensions ${\times}$ fp16) and is by construction independent of context length.
+$65.25\%\to65.70\%$. The recurrent state of the replacing RWKV is $64$ KiB per layer (a computed value from the reference implementation, which holds $2$ of the $5$ state vectors in fp16 and $3$ in fp32) and is by construction independent of context length.
 However, pure RWKV has zero KV and the ranking is task-dependent, so Fig.~\ref{fig:tradeoff} is presented as a
 memory--accuracy frontier restricted to SciQ.
 
@@ -609,7 +711,7 @@ fall significantly below the strong Pythia. \RtoP{} exceeds RWKV only on SciQ, a
 
 \paragraph{Translation is domain-specific.}The accuracies above were measured on short questions close to instruction format. KV-cache
 savings matter for long contexts, and there we must measure how well the chimera preserves language modeling on a text corpus from a
-different domain. At context $512$, \RtoPL{4} has perplexity $6.40$ on Alpaca and $93.87$ on WikiText-103. \PtoRL{4} improves in both domains at
+different domain (WikiText-103~\cite{merity2017pointer}). At context $512$, \RtoPL{4} has perplexity $6.40$ on Alpaca and $93.87$ on WikiText-103. \PtoRL{4} improves in both domains at
 $3.85/45.00$, but WikiText still remains far from the parents' $11.33/16.22$. Extending the context to $2048$,
 \PtoRL{4} reaches Alpaca $3.50$ and WikiText $34.78$, improving rather than collapsing. The main cause is therefore not context length but
 \emph{domain shift}. \PtoR{} mitigates the shift, but WikiText $34.78$ is $4.2$ times the better parent RWKV's $8.27$
@@ -644,52 +746,18 @@ sits near the parents on Alpaca, domain, not length, is the primary difference.}
 \label{fig:domain}
 \end{figure}
 
-\section{Related Work}\label{sec:related}
-\paragraph{Model stitching.} Connecting the layers of $2$ frozen models through a trainable stitching layer was introduced by
-Lenc and Vedaldi~\cite{10.1007/s11263-018-1098-y} to measure the \emph{equivalence} of representations, and was revisited by Bansal et al.~\cite{3540261.3540279} as a probe for representation comparison.
-Both stitch within the \emph{same architecture and the same task}; our work differs in that it stitches different \emph{families} (RNN$\leftrightarrow$Transformer)
-through a shared latent that translates each layer only $1$ time.
-\paragraph{Composing frozen LLMs.} Recent work continues to compose frozen LLMs through trainable connections.
-StitchLLM~\cite{hu-etal-2025-stitchllm} stitches blocks of Transformers of different scales with stitching layers and selects a
-path at serving time, and BTS~\cite{zhang-etal-2025-bts} exchanges hidden states \emph{bidirectionally} between a frozen seed and
-frozen experts branched from that seed, through Experts-into-Hub and Hub-into-Experts stitch layers alternating every few layers.
-CALM~\cite{bansal2024llm} fuses the intermediate representations of 2 frozen Transformers via cross-attention, and
-Manticore~\cite{roberts2025pretrained} runs Transformer and Mamba block sequences \emph{in parallel} behind projections,
-mixes them by a learned convex combination, and fine-tunes the resulting hybrid end-to-end (its embeddings and LM head are
-newly initialized).
-A separate line translates activations between frozen models. Model Alignment Search~\cite{grant2025model} maps activations
-bidirectionally between a frozen recurrent network and a frozen Transformer, but as a measure of representational similarity
-rather than to build a composed model. Chen et al.~\cite{chen2025transferring} translate the residual streams of 2 frozen
-language models into each other with an affine map at a single layer, and the Bicameral Model preprint~\cite{flamant2026bicameralmodelbidirectionalhiddenstate}
-couples 2 frozen language models through a bidirectional translation network; in both, each model still executes its own full
-stack in parallel. The GoldFinch preprint~\cite{goldstein2024goldfinchhighperformancerwkvtransformer} stacks a Transformer on top of RWKV-6 at a single boundary and
-compresses the KV cache by $756$--$2550\times$, but is trained from scratch rather than composed from pretrained parents.
-However, these either have Transformers on both sides, fine-tune the composed model (Manticore), or have at most one
-pretrained parent. To our knowledge, no prior work composes two independently pretrained language models -- an
-attention-free RNN and a Transformer -- into a working generator by translating the residual stream \emph{bidirectionally}
-through a \emph{single shared adapter} at \emph{one depth boundary}, with both parents and both LM heads left frozen.
-We further report the KV-cache reduction that this composition yields.
-\paragraph{Representation similarity.} CKA~\cite{pmlr-v97-kornblith19a} and (SV/PW)CCA~\cite{3295222.3295356,3327345.3327475} are standard tools for measuring representational
-similarity between networks. Our work uses them as auxiliary metrics (the all-layer correspondence in \S\ref{sec:space}) while placing its main focus on
-\emph{functional, reconstruction-mediated} stitching.
-\paragraph{Model merging and knowledge fusion.} Methods that merge models in weight space---model soups~\cite{pmlr-v162-wortsman22a}, TIES~\cite{3666122.3666432}, and evolutionary merging~\cite{Akiba2025}---
-presuppose \emph{identical or compatible} weights. FuseLLM~\cite{wan2024knowledge}, which fuses output distributions, does not require weight compatibility,
-but it needs token alignment across vocabularies and continued training of the target model. Our work is complementary in that it merges
-no weights at all and instead translates the \emph{activation space} to recombine frozen blocks.
-\paragraph{Target models.} RWKV~\cite{peng-etal-2023-rwkv} is an architecture that has no softmax self-attention and operates as a pure recurrence at inference time; this work uses its fourth-generation instruction-following variant, RWKV-4-Raven-7B. Pythia~\cite{3618408.3618510} and its Tulu SFT
-variant are Transformers. The fact that the two share the GPT-NeoX tokenizer is what makes position-aligned residual pairs possible.
-
 \section{Discussion}\label{sec:discussion}
 In our experiments, a shared representation can be learned between corresponding layers of frozen heterogeneous families ($\rho_{\mathrm{ctr}}\!=\!0.90$).
 \kw{However, the scope of this claim is limited}: the correspondence in this work is measured under the favorable conditions of
 \emph{an identical tokenizer, identical width, identical layer count, identical inputs, and a domain close to Alpaca};
 the shuffled control rules out token-independent distribution matching, but we do not disentangle whether the observed correspondence
 stems from semantics, vocabulary, position, or syntax. The degradation of perplexity on out-of-domain WikiText (\S\ref{sec:goal}) shows that generalization beyond the training domain remains in question. Hence we do not claim a ``general shared \emph{semantic} space'' and confine the claim to the existence of a ``shared space of
-token-aligned representations under favorable conditions.'' It is also important that high latent correlation does not guarantee high read-out accuracy; the presence of a shared representation and
-decodability must be evaluated separately. A chimera built on this space functions, but at a loss, and in the generation samples both paths remain fluent
+token-aligned representations under favorable conditions.'' That a composition functions does not establish that the two sides represent the same information: Smith et al.~\cite{pmlr-v267-smith25a} stitch successfully across different tasks and modalities, and even from representations derived from clustered random noise. Their stitching layers are, however, trained on the downstream task loss -- the regime that Balogh and Jelasity~\cite{balogh2025not} show rates non-corresponding and out-of-distribution representations highly -- whereas our adapter is trained by direct matching of corresponding residuals, which the same work finds balances the structural and functional requirements. Even so, Smith et al.\ obtain spurious alignment with a low-capacity stitch, and our adapter is considerably more expressive; that a low-capacity affine map already achieves substantial cross-family prediction (\S\ref{sec:linear}) is therefore our main ground for holding that the observed alignment is not manufactured by adapter capacity. It is also important that high latent correlation does not guarantee high read-out accuracy; the presence of a shared representation and
+decodability must be evaluated separately. The same separation has been reported independently: the preprint of Zhang and Xin~\cite{zhang2026negativeresultcrossmodelactivation} finds that a linear bridge between Pythia models reaches a normalized $R^2$ of $0.883$ offline yet degrades multi-hop reasoning when the mapped activation is substituted into the receiver, and concludes that receiver-side causal use must enter the training objective. Our adapter is likewise trained only on activation reconstruction and falls within the scope of that criticism. Our boundary map does, however, include the per-layer inverse standardization $\mathrm{unstd}_B$, which restores the receiver's native scale -- unlike their bridge, trained under a normalized objective -- though we do not isolate whether that structural difference is what matters. A chimera built on this space functions, but at a loss, and in the generation samples both paths remain fluent
 while erring in content or form. A competitive chimera requires identifying the factors that bottleneck $B\!\to\!B$, training across domains, and selecting complementary parent models on the pretraining side.
 
-\paragraph{Limitations.} Adapter training uses only a single random seed. Performance is measured on the \kw{full evaluation sets} (ARC-Easy $2376$, SciQ $1000$), and differences between configurations
+\section{Limitations}\label{sec:limitations}
+The evaluation tasks are exposed. Tulu-Pythia is instruction-tuned on a subset of FLAN V2, whose task inventory lists ARC and SciQ among its constituents. Matching verbatim against the released components of that mixture, $19$ ARC-Easy and $4$ SciQ evaluation items occur in it. Recomputing every configuration's accuracy with those items removed, using the per-item correctness dumps, moves no result by more than $0.22$ points and changes none of the comparisons in this paper. Moreover the matched items are harder or easier in the same direction for RWKV, which had no such exposure ($-9.2$ points on ARC, $+8.0$ on SciQ), so the gap reflects item difficulty rather than exposure. That said, ARC-Easy and SciQ remain task families the downstream parent already has, so our numbers should be read as capability retained through composition, not capability newly acquired. Adapter training uses only a single random seed. Performance is measured on the \kw{full evaluation sets} (ARC-Easy $2376$, SciQ $1000$), and differences between configurations
 were assessed with paired tests on the same questions (McNemar's exact test and paired bootstrap). \RtoP{} exceeds the weaker parent only on SciQ, and only under the length-normalized score (it does not hold under the sum score), and
 \PtoR{} does not significantly exceed RWKV at any boundary. We evaluate $2$ tasks $\times2$ cross paths $\times4$ switches plus multiple controls, without
 correction for multiple comparisons.
@@ -728,20 +796,20 @@ Differences between configurations are assessed with paired tests (McNemar and p
 no re-selection of checkpoints that saw $B\!\to\!A$ or \PtoR{} QA is performed. However, the two direction-fixed released runtimes
 take as default the $L{=}4$ whose reported test mean was highest over the four boundaries of each path after evaluation, with no independent deployment-selection split.
 \item \kw{Code and structured data}: the repository for this work is
-\href{https://github.com/kotama7/NinaXander}{\texttt{https://github.com/kotama7/NinaXander}}.
+\href{https://github.com/Katagiri-Hoshino-Lab/NinaXander}{\texttt{https://github.com/Katagiri-Hoshino-Lab/NinaXander}}.
 It contains the experiment code, the raw data of each evaluation together with
 aggregate tables of the values reported in the paper, the reproduction procedure, and checks that automatically cross-verify the numbers in the text against the tabulated data.
 \item \kw{Hugging Face distributions}: the inference artifacts as of July 30, 2026 were stored in the following three model
 repositories.
 \begin{itemize}\setlength{\itemsep}{0pt}
 \item Shared adapter: \hfrepo
-  {https://huggingface.co/kotama7/ninaxander-raven7b-tulu69-adapter}
+  {https://huggingface.co/Katagiri-Hoshino-Lab/ninaxander-raven7b-tulu69-adapter}
   {ninaxander-raven7b-tulu69-adapter}
 \item \PtoR{} (default $L{=}4$): \hfrepo
-  {https://huggingface.co/kotama7/ninaxander-tulu69-to-raven7b-best}
+  {https://huggingface.co/Katagiri-Hoshino-Lab/ninaxander-tulu69-to-raven7b-best}
   {ninaxander-tulu69-to-raven7b-best}
 \item \RtoP{} (default $L{=}4$): \hfrepo
-  {https://huggingface.co/kotama7/ninaxander-raven7b-to-tulu69-best}
+  {https://huggingface.co/Katagiri-Hoshino-Lab/ninaxander-raven7b-to-tulu69-best}
   {ninaxander-raven7b-to-tulu69-best}
 \end{itemize}
 Each repository includes model cards and notices in English, Japanese, and Simplified Chinese, SafeTensors, and a SHA-256 manifest.

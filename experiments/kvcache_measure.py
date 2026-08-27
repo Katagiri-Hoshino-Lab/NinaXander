@@ -60,7 +60,14 @@ def main() -> None:
     kib_per_token = total_bytes / args.sequence_length / 1024
     kib_per_token_layer = kib_per_token / layer_count
     formula_kib = 2 * layer_count * model.config.hidden_size * 2 / 1024
-    rwkv_state_kib_layer = 5 * model.config.hidden_size * 2 / 1024
+    # HF RWKV initializes states 0-1 in the input dtype and states 2-4 in float32
+    # (modeling_rwkv.py: dtype=inputs_embeds.dtype if i <= 1 else torch.float32),
+    # so an all-fp16 count understates the resident state by 60%.
+    _fp16_states, _fp32_states = 2, 3
+    rwkv_state_kib_layer = (
+        _fp16_states * model.config.hidden_size * 2
+        + _fp32_states * model.config.hidden_size * 4
+    ) / 1024
 
     print(
         f"MEASURED: layers={layer_count}  K shape={tuple(key0.shape)} dtype={key0.dtype}"

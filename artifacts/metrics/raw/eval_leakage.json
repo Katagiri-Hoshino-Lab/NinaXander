@@ -1,0 +1,651 @@
+{
+ "components_scanned": [
+  "cot",
+  "flan_v2"
+ ],
+ "mixture_rows_scanned": 200000,
+ "corpus_chars": 248253389,
+ "min_question_words": 6,
+ "matched_indices": {
+  "arc_easy": [
+   26,
+   53,
+   126,
+   283,
+   696,
+   839,
+   841,
+   889,
+   1139,
+   1172,
+   1313,
+   1367,
+   1678,
+   1691,
+   1863,
+   1948,
+   2144,
+   2219,
+   2375
+  ],
+  "sciq": [
+   68,
+   415,
+   682,
+   904
+  ]
+ },
+ "matched_counts": {
+  "arc_easy": 19,
+  "sciq": 4
+ },
+ "max_abs_delta_points": 0.21887550200803219,
+ "recomputed": [
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "pythia",
+   "accuracy_norm_full": 65.31986531986531,
+   "accuracy_norm_excluding_matched": 65.42214679677556,
+   "delta": 0.10228147691024958
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "rwkv",
+   "accuracy_norm_full": 61.784511784511785,
+   "accuracy_norm_excluding_matched": 61.8582944420874,
+   "delta": 0.07378265757561309
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "A_to_B@4",
+   "accuracy_norm_full": 59.5959595959596,
+   "accuracy_norm_excluding_matched": 59.60967331353415,
+   "delta": 0.013713717574553641
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "A_to_B@8",
+   "accuracy_norm_full": 58.964646464646464,
+   "accuracy_norm_excluding_matched": 59.01569792108613,
+   "delta": 0.0510514564396658
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "A_to_B@16",
+   "accuracy_norm_full": 48.611111111111114,
+   "accuracy_norm_excluding_matched": 48.705982180738225,
+   "delta": 0.09487106962711067
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "A_to_B@24",
+   "accuracy_norm_full": 46.96969696969697,
+   "accuracy_norm_excluding_matched": 46.83920237590157,
+   "delta": -0.1304945937953974
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "A_to_B_alpha0@4",
+   "accuracy_norm_full": 31.902356902356903,
+   "accuracy_norm_excluding_matched": 31.777683495969452,
+   "delta": -0.12467340638745128
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "A_to_B_alpha0@8",
+   "accuracy_norm_full": 29.924242424242426,
+   "accuracy_norm_excluding_matched": 29.995757318625373,
+   "delta": 0.07151489438294689
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "A_to_B_alpha0@16",
+   "accuracy_norm_full": 28.535353535353536,
+   "accuracy_norm_excluding_matched": 28.55324565125159,
+   "delta": 0.017892115898053618
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "A_to_B_alpha0@24",
+   "accuracy_norm_full": 34.80639730639731,
+   "accuracy_norm_excluding_matched": 34.87484089944845,
+   "delta": 0.06844359305114267
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "A_to_B_affine@4",
+   "accuracy_norm_full": 41.877104377104374,
+   "accuracy_norm_excluding_matched": 41.960118795078486,
+   "delta": 0.08301441797411258
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "A_to_B_affine@8",
+   "accuracy_norm_full": 43.05555555555556,
+   "accuracy_norm_excluding_matched": 42.97836232498939,
+   "delta": -0.07719323056616645
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "A_to_B_affine@16",
+   "accuracy_norm_full": 34.84848484848485,
+   "accuracy_norm_excluding_matched": 34.74756045820959,
+   "delta": -0.10092439027526012
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "A_to_B_affine@24",
+   "accuracy_norm_full": 39.39393939393939,
+   "accuracy_norm_excluding_matched": 39.45693678404752,
+   "delta": 0.06299739010812999
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "B_to_B@4",
+   "accuracy_norm_full": 62.16329966329966,
+   "accuracy_norm_excluding_matched": 62.1977089520577,
+   "delta": 0.03440928875804161
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "B_to_B@8",
+   "accuracy_norm_full": 62.668350168350166,
+   "accuracy_norm_excluding_matched": 62.706830717013155,
+   "delta": 0.03848054866298867
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "B_to_B@16",
+   "accuracy_norm_full": 57.36531986531987,
+   "accuracy_norm_excluding_matched": 57.403478998727195,
+   "delta": 0.03815913340732635
+  },
+  {
+   "direction": "A_to_B",
+   "task": "arc_easy",
+   "config": "B_to_B@24",
+   "accuracy_norm_full": 59.427609427609426,
+   "accuracy_norm_excluding_matched": 59.439966058549004,
+   "delta": 0.012356630939578395
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "pythia",
+   "accuracy_norm_full": 81.0,
+   "accuracy_norm_excluding_matched": 80.92369477911646,
+   "delta": -0.07630522088354041
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "rwkv",
+   "accuracy_norm_full": 67.0,
+   "accuracy_norm_excluding_matched": 66.96787148594377,
+   "delta": -0.0321285140562253
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "A_to_B@4",
+   "accuracy_norm_full": 70.9,
+   "accuracy_norm_excluding_matched": 70.9839357429719,
+   "delta": 0.08393574297188877
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "A_to_B@8",
+   "accuracy_norm_full": 67.7,
+   "accuracy_norm_excluding_matched": 67.8714859437751,
+   "delta": 0.17148594377509596
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "A_to_B@16",
+   "accuracy_norm_full": 54.5,
+   "accuracy_norm_excluding_matched": 54.71887550200803,
+   "delta": 0.21887550200803219
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "A_to_B@24",
+   "accuracy_norm_full": 51.1,
+   "accuracy_norm_excluding_matched": 51.30522088353413,
+   "delta": 0.20522088353413181
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "A_to_B_alpha0@4",
+   "accuracy_norm_full": 31.3,
+   "accuracy_norm_excluding_matched": 31.42570281124498,
+   "delta": 0.12570281124498095
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "A_to_B_alpha0@8",
+   "accuracy_norm_full": 31.4,
+   "accuracy_norm_excluding_matched": 31.526104417670684,
+   "delta": 0.12610441767068536
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "A_to_B_alpha0@16",
+   "accuracy_norm_full": 31.7,
+   "accuracy_norm_excluding_matched": 31.82730923694779,
+   "delta": 0.1273092369477915
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "A_to_B_alpha0@24",
+   "accuracy_norm_full": 40.0,
+   "accuracy_norm_excluding_matched": 40.16064257028113,
+   "delta": 0.1606425702811265
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "A_to_B_affine@4",
+   "accuracy_norm_full": 47.5,
+   "accuracy_norm_excluding_matched": 47.48995983935743,
+   "delta": -0.010040160642567741
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "A_to_B_affine@8",
+   "accuracy_norm_full": 49.1,
+   "accuracy_norm_excluding_matched": 49.196787148594375,
+   "delta": 0.0967871485943732
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "A_to_B_affine@16",
+   "accuracy_norm_full": 35.9,
+   "accuracy_norm_excluding_matched": 36.04417670682731,
+   "delta": 0.14417670682730943
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "A_to_B_affine@24",
+   "accuracy_norm_full": 42.7,
+   "accuracy_norm_excluding_matched": 42.7710843373494,
+   "delta": 0.07108433734939723
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "B_to_B@4",
+   "accuracy_norm_full": 74.8,
+   "accuracy_norm_excluding_matched": 74.79919678714859,
+   "delta": -0.0008032128514088299
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "B_to_B@8",
+   "accuracy_norm_full": 74.8,
+   "accuracy_norm_excluding_matched": 74.8995983935743,
+   "delta": 0.099598393574297
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "B_to_B@16",
+   "accuracy_norm_full": 71.1,
+   "accuracy_norm_excluding_matched": 71.285140562249,
+   "delta": 0.18514056224900344
+  },
+  {
+   "direction": "A_to_B",
+   "task": "sciq",
+   "config": "B_to_B@24",
+   "accuracy_norm_full": 70.1,
+   "accuracy_norm_excluding_matched": 70.18072289156626,
+   "delta": 0.08072289156626766
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "pythia",
+   "accuracy_norm_full": 65.31986531986531,
+   "accuracy_norm_excluding_matched": 65.42214679677556,
+   "delta": 0.10228147691024958
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "rwkv",
+   "accuracy_norm_full": 61.784511784511785,
+   "accuracy_norm_excluding_matched": 61.8582944420874,
+   "delta": 0.07378265757561309
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "B_to_A@4",
+   "accuracy_norm_full": 62.205387205387204,
+   "accuracy_norm_excluding_matched": 62.36741620704285,
+   "delta": 0.1620290016556467
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "B_to_A@8",
+   "accuracy_norm_full": 57.28114478114478,
+   "accuracy_norm_excluding_matched": 57.361052184980906,
+   "delta": 0.07990740383612405
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "B_to_A@16",
+   "accuracy_norm_full": 57.49158249158249,
+   "accuracy_norm_excluding_matched": 57.61561306745863,
+   "delta": 0.12403057587614086
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "B_to_A@24",
+   "accuracy_norm_full": 59.5959595959596,
+   "accuracy_norm_excluding_matched": 59.69452694102673,
+   "delta": 0.09856734506713138
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "B_to_A_affine@4",
+   "accuracy_norm_full": 60.22727272727273,
+   "accuracy_norm_excluding_matched": 60.37335596096733,
+   "delta": 0.14608323369460408
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "B_to_A_affine@8",
+   "accuracy_norm_full": 56.01851851851852,
+   "accuracy_norm_excluding_matched": 56.130674586338564,
+   "delta": 0.11215606782004528
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "B_to_A_affine@16",
+   "accuracy_norm_full": 57.49158249158249,
+   "accuracy_norm_excluding_matched": 57.53075943996606,
+   "delta": 0.03917694838357022
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "B_to_A_affine@24",
+   "accuracy_norm_full": 59.17508417508417,
+   "accuracy_norm_excluding_matched": 59.22783198981757,
+   "delta": 0.05274781473339374
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "A_to_A@4",
+   "accuracy_norm_full": 62.83670033670034,
+   "accuracy_norm_excluding_matched": 63.00381841323716,
+   "delta": 0.16711807653682342
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "A_to_A@8",
+   "accuracy_norm_full": 59.84848484848485,
+   "accuracy_norm_excluding_matched": 59.949087823504456,
+   "delta": 0.10060297501960491
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "A_to_A@16",
+   "accuracy_norm_full": 54.755892255892256,
+   "accuracy_norm_excluding_matched": 54.730589732711074,
+   "delta": -0.02530252318118187
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "A_to_A@24",
+   "accuracy_norm_full": 52.18855218855219,
+   "accuracy_norm_excluding_matched": 52.2274077216801,
+   "delta": 0.03885553312791501
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "B_to_A_alpha0@4",
+   "accuracy_norm_full": 31.776094276094277,
+   "accuracy_norm_excluding_matched": 31.82011030971574,
+   "delta": 0.04401603362146389
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "B_to_A_alpha0@8",
+   "accuracy_norm_full": 35.52188552188552,
+   "accuracy_norm_excluding_matched": 35.55366991938905,
+   "delta": 0.031784397503528794
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "B_to_A_alpha0@16",
+   "accuracy_norm_full": 43.686868686868685,
+   "accuracy_norm_excluding_matched": 43.61476453118371,
+   "delta": -0.07210415568497552
+  },
+  {
+   "direction": "B_to_A",
+   "task": "arc_easy",
+   "config": "B_to_A_alpha0@24",
+   "accuracy_norm_full": 48.35858585858586,
+   "accuracy_norm_excluding_matched": 48.36656767076793,
+   "delta": 0.007981812182066506
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "pythia",
+   "accuracy_norm_full": 81.0,
+   "accuracy_norm_excluding_matched": 80.92369477911646,
+   "delta": -0.07630522088354041
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "rwkv",
+   "accuracy_norm_full": 67.0,
+   "accuracy_norm_excluding_matched": 66.96787148594377,
+   "delta": -0.0321285140562253
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "B_to_A@4",
+   "accuracy_norm_full": 69.2,
+   "accuracy_norm_excluding_matched": 69.17670682730923,
+   "delta": -0.023293172690770803
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "B_to_A@8",
+   "accuracy_norm_full": 64.6,
+   "accuracy_norm_excluding_matched": 64.65863453815261,
+   "delta": 0.05863453815261721
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "B_to_A@16",
+   "accuracy_norm_full": 68.0,
+   "accuracy_norm_excluding_matched": 68.07228915662651,
+   "delta": 0.07228915662651048
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "B_to_A@24",
+   "accuracy_norm_full": 69.9,
+   "accuracy_norm_excluding_matched": 69.97991967871486,
+   "delta": 0.07991967871485883
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "B_to_A_affine@4",
+   "accuracy_norm_full": 69.6,
+   "accuracy_norm_excluding_matched": 69.57831325301204,
+   "delta": -0.021686746987953143
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "B_to_A_affine@8",
+   "accuracy_norm_full": 68.0,
+   "accuracy_norm_excluding_matched": 67.9718875502008,
+   "delta": -0.02811244979919536
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "B_to_A_affine@16",
+   "accuracy_norm_full": 69.6,
+   "accuracy_norm_excluding_matched": 69.67871485943775,
+   "delta": 0.0787148594377527
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "B_to_A_affine@24",
+   "accuracy_norm_full": 68.2,
+   "accuracy_norm_excluding_matched": 68.1726907630522,
+   "delta": -0.02730923694780074
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "A_to_A@4",
+   "accuracy_norm_full": 68.5,
+   "accuracy_norm_excluding_matched": 68.57429718875503,
+   "delta": 0.07429718875502545
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "A_to_A@8",
+   "accuracy_norm_full": 66.7,
+   "accuracy_norm_excluding_matched": 66.76706827309236,
+   "delta": 0.06706827309236019
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "A_to_A@16",
+   "accuracy_norm_full": 59.8,
+   "accuracy_norm_excluding_matched": 59.83935742971887,
+   "delta": 0.03935742971887635
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "A_to_A@24",
+   "accuracy_norm_full": 57.9,
+   "accuracy_norm_excluding_matched": 58.032128514056225,
+   "delta": 0.13212851405622672
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "B_to_A_alpha0@4",
+   "accuracy_norm_full": 32.6,
+   "accuracy_norm_excluding_matched": 32.630522088353416,
+   "delta": 0.030522088353414745
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "B_to_A_alpha0@8",
+   "accuracy_norm_full": 37.0,
+   "accuracy_norm_excluding_matched": 37.14859437751004,
+   "delta": 0.14859437751003668
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "B_to_A_alpha0@16",
+   "accuracy_norm_full": 47.3,
+   "accuracy_norm_excluding_matched": 47.389558232931726,
+   "delta": 0.08955823293172926
+  },
+  {
+   "direction": "B_to_A",
+   "task": "sciq",
+   "config": "B_to_A_alpha0@24",
+   "accuracy_norm_full": 49.1,
+   "accuracy_norm_excluding_matched": 49.196787148594375,
+   "delta": 0.0967871485943732
+  }
+ ],
+ "parent_contrast": [
+  {
+   "task": "arc_easy",
+   "config": "pythia",
+   "matched_items": 19,
+   "accuracy_on_matched": 52.63157894736842,
+   "accuracy_on_rest": 65.42214679677556
+  },
+  {
+   "task": "arc_easy",
+   "config": "rwkv",
+   "matched_items": 19,
+   "accuracy_on_matched": 52.63157894736842,
+   "accuracy_on_rest": 61.8582944420874
+  },
+  {
+   "task": "sciq",
+   "config": "pythia",
+   "matched_items": 4,
+   "accuracy_on_matched": 100.0,
+   "accuracy_on_rest": 80.92369477911646
+  },
+  {
+   "task": "sciq",
+   "config": "rwkv",
+   "matched_items": 4,
+   "accuracy_on_matched": 75.0,
+   "accuracy_on_rest": 66.96787148594377
+  }
+ ]
+}
