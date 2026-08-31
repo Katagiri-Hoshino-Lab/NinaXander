@@ -39,6 +39,10 @@
   "arc_easy": 19,
   "sciq": 4
  },
+ "unsearched_short_questions": {
+  "arc_easy": 40,
+  "sciq": 11
+ },
  "max_abs_delta_points": 0.21887550200803219,
  "recomputed": [
   {

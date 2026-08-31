@@ -197,7 +197,7 @@ def main():
     check("abstract affine", f"で ${fmt(aff_ab, 3)}/{fmt(aff_ba, 3)}$ に達する一方")
     check(
         "abstract nonaffine share",
-        f"学習済みアダプタ出力の ${fmt((1 - fit_ab) * 100, 1)}\\%/{fmt((1 - fit_ba) * 100, 1)}\\%$ はアフィン写像で説明できない",
+        f"学習済みアダプタ出力の ${fmt((1 - fit_ab) * 100, 1)}\\%/{fmt((1 - fit_ba) * 100, 1)}\\%$ は",
     )
     check("affine imitation", f"\\RtoP{{}} で ${fmt(fit_ab * 100, 1)}\\%$，\\PtoR{{}} で ${fmt(fit_ba * 100, 1)}\\%$ である")
     check("direct affine reach", f"最良直接アフィン写像は \\RtoP{{}} ${fmt(aff_ab, 3)}$，\\PtoR{{}} ${fmt(aff_ba, 3)}$ に達する")
@@ -362,7 +362,7 @@ def main():
     )
     check(
         "table5 BA@4 row",
-        f"\\textbf{{${fmt(float(ba4['kv_reduction_fraction']) * 100, 1)}\\%$}} & "
+        f"\\textbf{{$\\mathbf{{{fmt(float(ba4['kv_reduction_fraction']) * 100, 1)}}}\\%$}} & "
         f"\\textbf{{{fmt(float(ba4['arc_easy_accuracy_norm']) * 100, 1)} / {fmt(float(ba4['sciq_accuracy_norm']) * 100, 1)}}}",
     )
     frontier = sorted(
@@ -436,6 +436,12 @@ def main():
             f"（ARC で ${signed(fmt(contrast[('arc_easy', 'rwkv')], 1))}$ 点，"
             f"SciQ で ${signed(fmt(contrast[('sciq', 'rwkv')], 1))}$ 点）",
         )
+        skipped = leak.get("unsearched_short_questions", {})
+        if skipped:
+            check(
+                "leakage unsearched short questions",
+                f"（ARC-Easy ${skipped['arc_easy']}$ 問，SciQ ${skipped['sciq']}$ 問）",
+            )
         invariant(
             "leakage does not overturn any comparison",
             leak["max_abs_delta_points"] < 1.0,

@@ -48,14 +48,17 @@ def scan(questions):
         if row.get("dataset") in KEEP_COMPONENTS:
             chunks.append(norm(" ".join(m.get("content", "") for m in row["messages"])))
     corpus = "\n".join(chunks)
-    hits = {}
+    hits, skipped = {}, {}
     for task, qs in questions.items():
         hits[task] = [
             i
             for i, q in enumerate(qs)
             if len(q.split()) >= MIN_WORDS and corpus.find(norm(q)) != -1
         ]
-    return hits, len(chunks), len(corpus)
+        # Questions below the length floor are never searched, so the counts are
+        # lower bounds; record how many were skipped to keep the paper honest.
+        skipped[task] = sum(1 for q in qs if len(q.split()) < MIN_WORDS)
+    return hits, skipped, len(chunks), len(corpus)
 
 
 def recompute(raw_dir, hits):
@@ -96,7 +99,7 @@ def main():
     raw_dir = pathlib.Path(a.raw_dir)
 
     questions = eval_questions()
-    hits, rows_kept, corpus_chars = scan(questions)
+    hits, skipped, rows_kept, corpus_chars = scan(questions)
     recomputed = recompute(raw_dir, hits)
 
     # Exposure cannot be blamed for a difficulty gap that the UNEXPOSED parent
@@ -126,6 +129,7 @@ def main():
         "min_question_words": MIN_WORDS,
         "matched_indices": hits,
         "matched_counts": {k: len(v) for k, v in hits.items()},
+        "unsearched_short_questions": skipped,
         "max_abs_delta_points": worst,
         "recomputed": recomputed,
         "parent_contrast": contrast,
