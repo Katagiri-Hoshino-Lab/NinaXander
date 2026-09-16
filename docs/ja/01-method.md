@@ -102,12 +102,13 @@ QAのanswer optionでは常に標準RWKV batch size 1を使います。adapter�
 これによりbatch-one kernel pathを保ちながら、数値的に異なるbatched resultを避けます。
 
 双方向checkpoint自体は変更しません。BAだけを実行する場合、到達不能なE_A/D_B moduleはCPU上に
-置いたままにできます。QAではA→A decoder-loss対照にE_Aを使うため保持しますが、
+置いたままにできます。QAではA→A対照にE_Aを使うため保持しますが、
 D_Bは全BA armで到達不能です。定量的BA比較はすべて、held-out A→Bで選ばれた同じ
 公開step-415,000 checkpointを固定し、B→AやBA QAを見てからcheckpointを再選択しません。
 
-残る2 cell、`NinaXander-AA@L`と`NinaXander-BB@L`は同family reconstruction対照です。
+残る2 cell、`NinaXander-AA@L`と`NinaXander-BB@L`は同family reconstruction対照です（命名規則は共通ですが、family境界をまたぐNinaXanderモデルではありません）。
 同一境界で同じencoder/decoder interfaceを使いますが、model familyは変更しません。
+そのためtranslationではなく、encodeとdecodeの往復による損失を切り分けます。
 4 cellすべてを`paper_four_path_qa_accuracy.csv`へまとめて報告します。
 
 現在の構築はfamily境界1つ、したがってtranslation 1回です。複数境界の合成は報告実験の範囲外です。
@@ -133,10 +134,17 @@ D_Bは全BA armで到達不能です。定量的BA比較はすべて、held-out 
 - `A→A`/`B→B`を`B→A`/`A→B`の*ceiling*とすること、またはどちらかのgapを
   「sharingの代価」とすること。targetが異なる空間にあり、真の参照ceilingは
   直接superviseしたlayer別bridgeです。
+- `A→A`/`B→B`がdecoderを切り分けるとすること。切り分けるのはencodeとdecodeの往復であり、
+  reconstruction errorがencoder、latent正規化、decoder、学習時noiseのいずれに由来するかは切り分けていません。
+- α=0介入をnon-linearityが一般に必要である証拠とすること。示されるのは、同時に学習したこのadapterが
+  residual-block branchを失えないことだけで、BAの精度では別途fitしたaffine対照とadapterの差も小さいです（−3.4〜+2.0点）。
+- post-hocなpath/switch探索を学習不要とすること。構成ごとの再学習が不要になるのはadapterの学習後に限られ、
+  新たなhybridの事前学習や蒸留に対する総学習costの優位は確立していません。
 
 ## adapterを軽量にすべき理由（本質的）
 
-NinaXanderは、異種modelの対応層が*単純な*変換後にsemantic spaceを共有するという仮説を検証します。
+本プロジェクトは、好条件下では異種modelの対応層が、*単純な*low-capacity変換で到達できるtoken対応表現を
+共有するという仮説を検証します。一般的なsemantic spaceを共有するという仮説ではありません。
 したがってadapter capacityはoverfitting上の懸念だけでなく、方法論上の制約です。
 重いadapter（deep/wide MLPやlarge ResNet）は2空間間の任意mapを近似できるため、
 重いadapterで高いAB/BA read-outを得てもshared spaceの証拠にはなりません。
@@ -145,13 +153,18 @@ NinaXanderは、異種modelの対応層が*単純な*変換後にsemantic space�
 この対応linear-reachability測定がshared-space claimを支えます。
 
 報告latentは非圧縮（`z = d = 4096`）です。そのためlightweightという議論はwidthではなく
-*capacity*に関するものです。adapterは2つのlinear mapの間にzero-initialized residual blockを
-1つ置き、厳密なlinear mapとして開始して必要なnon-linearityだけを成長させます。
+*capacity*に関するものです。E、Dはそれぞれ2つのlinear mapの間にzero-initialized residual blockを
+1つ置いた構造で、どちらもlinear mapとして学習を始め、non-linearityは学習中に獲得されます。
+`A→B = D_B(LN(E_A(·)))`のようなcross pathはこのblockを2つ通り、その間にnon-affine LNが入るため、
+cross map全体は初期状態でもlinearではありません。
 268.5M parameterは14.2B frozen weightの1.9%です。cross-readoutはparameter countとarchitectureと
 合わせて両方向を報告すべきで、対応して制約されたmapである場合にだけ証拠になります。
 
 学習*後*にどの程度linearに近いかは測定可能で、結果は「near-linear」という枠組みを撤回させます。
 同一の実残差row上で、最良affine imitationが説明するadapter出力はAB **86.6%**、BA **88.0%**です。
-したがって13.4% / 12.0%は不可約なnon-linear成分です。同じ学習済みresidual-MLP branchを除くと
-両cross read-outは崩壊します（AB 0.56→−0.41、BA 0.58→−0.30）。
+したがって13.4% / 12.0%は不可約なnon-linear成分であり、
 よってadapterはlow-*capacity*と記述し、「near-linear」とは決して記述しません。
+同じ学習済みadapterのresidual-MLP branchをまとめてα=0にすると（ABはE_AとD_Bの、BAはE_BとD_Aの
+blockを通ります）、両cross read-out（AB 0.56→−0.41、BA 0.58→−0.30）と両pathの下流精度が崩壊します。
+これは同時に学習した写像からbranchだけを除いた場合の性質であり、non-linearityが一般に必要であることは
+示しません。BAの精度では、別途fitしたaffine対照とadapterの差は小さく（−3.4〜+2.0点）、adapterが一貫して上回るわけではありません。

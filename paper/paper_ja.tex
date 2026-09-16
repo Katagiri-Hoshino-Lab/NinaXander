@@ -1,316 +1,499 @@
-\documentclass[conference]{IEEEtran}
-\usepackage{luatexja}
+\PassOptionsToPackage{dvipdfmx}{graphicx}
+\PassOptionsToPackage{dvipdfmx}{xcolor}
+\PassOptionsToPackage{dvipdfmx}{color}
+\documentclass[techrep,noauthor]{ipsj}
+% ipsj.cls asks for commercial Morisawa title faces; substitute the standard pTeX gothic (mapped to Harano Aji).
+\DeclareFontShape{JY1}{fgb}{m}{n}{<-> s*[0.962216] gbm}{}
+\DeclareFontShape{JT1}{fgb}{m}{n}{<-> s*[0.962216] gbmv}{}
+\DeclareFontShape{JY1}{fmb}{m}{n}{<-> s*[0.962216] gbm}{}
+\DeclareFontShape{JT1}{fmb}{m}{n}{<-> s*[0.962216] gbmv}{}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{graphicx}
 \usepackage{xcolor}
+\def\pgfsysdriver{pgfsys-dvipdfmx.def}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc}
 \usepackage{float}
-\usepackage{balance}
-\usepackage[hidelinks]{hyperref}
-\hypersetup{
-  pdftitle={NinaXander：共有潜在表現による異種モデル族の凍結言語モデル合成――成立条件と限界},
-  pdfauthor={樹神 宇徳,林 俊一郎,椋木 大地,星野 哲也,片桐 孝洋},
-  pdfsubject={凍結したRWKVとTransformerの共有潜在表現による合成},
-  pdfkeywords={language model composition, RWKV, Transformer, representation alignment}
-}
+\usepackage{url}
+% hyperref breaks ipsj.cls's \cite, so links are printed as plain text.
+\providecommand{\href}[2]{#2}
+% ipsj.cls typesets bibliography URLs as plain text, which fails on "_"; route them through \url.
+\makeatletter
+\def\@urle#1{\normalfont available from $\langle$\nobreak\url{#1}\nobreak$\rangle$}
+\def\@urlj#1{\normalfont 入手先$\langle$\nobreak\url{#1}\nobreak$\rangle$}
+% A Japanese table caption expects an \ecaption after it and ends with no gap; without one the rule touches the caption.
+\def\ipsj@tabletype{table}
+\let\ipsj@orig@makecaption\@makecaption
+\long\def\@makecaption#1#2{\ipsj@orig@makecaption{#1}{#2}\ifx\@captype\ipsj@tabletype\par\vskip 2mm\fi}
+\makeatother
+% Footer year (the class otherwise derives it from the volume counter).
+\setcounter{year}{2026}
+% The class numbers \paragraph run-in headings; this paper uses no \subsubsection.
+\AtBeginDocument{\setcounter{secnumdepth}{2}}
+% hyperref is not loaded, so write the PDF document information directly (EUC strings converted by dvipdfmx).
+\AtBeginDvi{\special{pdf:tounicode EUC-UCS2}\special{pdf:docinfo<<
+  /Title (NinaXander：共有潜在表現による異種モデル族の凍結言語モデル合成の成立条件と限界)
+  /Author (樹神 宇徳,林 俊一郎,椋木 大地,星野 哲也,片桐 孝洋)
+  /Subject (凍結したRWKVとTransformerの共有潜在表現による合成)
+  /Keywords (language model composition, RWKV, Transformer, representation alignment)>>}}
 
-\newcommand{\kw}[1]{\textbf{#1}}
+% 本文中では太字による強調を用いない。
+\newcommand{\kw}[1]{#1}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
 \newcommand{\Rsq}{R^2}
 \newcommand{\RWKVself}{\textsf{RWKV自己再構成}}
 \newcommand{\Pythiaself}{\textsf{Pythia自己再構成}}
-\newcommand{\RtoP}{\textsf{RWKV$\to$Pythia}}
-\newcommand{\PtoR}{\textsf{Pythia$\to$RWKV}}
+\newcommand{\RtoP}{\textsf{RWKV$\to$\allowbreak Pythia}}
+\newcommand{\PtoR}{\textsf{Pythia$\to$\allowbreak RWKV}}
 \newcommand{\RtoPL}[1]{\RtoP{}（$L{=}#1$）}
 \newcommand{\PtoRL}[1]{\PtoR{}（$L{=}#1$）}
 \newcommand{\hfrepo}[2]{%
   \href{#1}{%
-    \texttt{https://huggingface.co/Katagiri-Hoshino-Lab/}\allowbreak\texttt{#2}}}
-
-\title{\bfseries NinaXander：共有潜在表現による異種モデル族の凍結言語モデル合成――成立条件と限界}
-\author{%
-\IEEEauthorblockN{樹神 宇徳\IEEEauthorrefmark{1}，林 俊一郎\IEEEauthorrefmark{1}，
-椋木 大地\IEEEauthorrefmark{2}，星野 哲也\IEEEauthorrefmark{2}，片桐 孝洋\IEEEauthorrefmark{2}}
-\IEEEauthorblockA{\IEEEauthorrefmark{1}名古屋大学大学院情報学研究科}
-\IEEEauthorblockA{\IEEEauthorrefmark{2}名古屋大学情報基盤センター}}
+    \texttt{https://huggingface.co/}\allowbreak\texttt{Katagiri-Hoshino-Lab/}\allowbreak\texttt{#2}}}
 
 \begin{document}
-\maketitle
+
+\title{NinaXander：共有潜在表現による異種モデル族の\\凍結言語モデル合成の成立条件と限界}
+\etitle{NinaXander: Conditions and Limits of Composing Frozen Language Models Across Model Families via a Shared Latent Representation}
+
+\affiliate{GSI}{名古屋大学大学院情報学研究科\\
+Graduate School of Informatics, Nagoya University}
+\affiliate{ITC}{名古屋大学情報基盤センター\\
+Information Technology Center, Nagoya University}
+
+\author{樹神 宇徳}{Takanori Kotama}{GSI}
+\author{林 俊一郎}{Shun-ichiro Hayashi}{GSI}
+\author{椋木 大地}{Daichi Mukunoki}{ITC}
+\author{星野 哲也}{Tetsuya Hoshino}{ITC}
+\author{片桐 孝洋}{Takahiro Katagiri}{ITC}
 
 \begin{abstract}
-\kw{NinaXander} は，異なる事前学習系統の凍結層を，共有潜在アダプタを介して接続する言語モデルである。本研究では，
-RWKV-4-Raven-7B（再帰型）と Tulu-Pythia-6.9b（Transformer 型）を対象に，対応層間の表現が比較的軽量なアダプタで接続可能か，
+\kw{NinaXander} は，異なる事前学習系統の凍結層を共有潜在アダプタで接続して得られる合成言語モデル群の名称である。
+本研究では，再帰型の RWKV-4-Raven-7B と Transformer 型の Tulu-Pythia-6.9b を対象とし，個々の合成モデルを
+\PtoRL{4} のように系統横断経路と切替層で指定する。対応層間の表現が比較的軽量なアダプタで接続可能か，
 またその接続がモデルの言語性能にどのような影響を与えるか検証する。主な結果は四つである。
-\emph{(i)} 同一トークナイザ・幅・層数・学習領域という条件下で，中心化潜在相関
+第一に，同一トークナイザ・幅・層数・学習領域という条件下で，中心化潜在相関
 $\rho_{\mathrm{ctr}}{=}0.901$ を得た。行対応をシャッフルすると整合は消失する一方，生表現の CKA は同一層で最大にならず，
 WikiText への領域シフトでも性能が大きく低下する。したがって，本結果が示すのは一般的な意味空間ではなく，
 好条件下で学習可能なトークン対応表現である。
-\emph{(ii)} 四経路の読み出しは \RWKVself{}／\RtoP{}／\Pythiaself{}／\PtoR{} の順に
+第二に，四経路の読み出しは \RWKVself{}／\RtoP{}／\Pythiaself{}／\PtoR{} の順に
 $0.695/0.559/0.711/0.590$ であり，本手法は圧縮工程を用いていないが再構成誤差が残る。
-\emph{(iii)} 最良直接アフィン写像は \RtoP{}／\PtoR{} で $0.487/0.535$ に達する一方，
+第三に，最良直接アフィン写像は \RtoP{}／\PtoR{} で $0.487/0.535$ に達する一方，
 学習済みアダプタ出力の $13.4\%/12.0\%$ は，それぞれの最良アフィン適合では説明されずに残る。同一アダプタの
 非線形枝を無効化すると両横断読み出しは負の $\Rsq$ まで崩れる。
-\emph{(iv)} 単一境界で合成したキメラは構文的に妥当な生成と多肢選択の遂行が可能だが，強い親モデルには届かない。\PtoR{} は
+第四に，単一境界で合成したキメラは構文的に妥当な生成と多肢選択の遂行が可能だが，強い親モデルには届かない。\PtoR{} は
 深い境界の正答率が同層の \RtoP{} より $8.9$--$18.8$ 点高く，Pythia 前段$\to$RWKV 後段の \PtoRL{4} は
 Transformer を $5$ 層だけ残して KV を $84.4\%$ 削減しつつ，ARC-Easy $62.2\%$，SciQ $69.2\%$ を保つ。
 ただし RWKV を有意には上回らず，この $L{=}4$ の選択も同じ二つのテスト集合上の事後選択である。
 また領域外 WikiText への汎化には大きな課題が残る。
 \end{abstract}
 
-\section{はじめに}\label{sec:intro}
-大規模な事前学習に投じた計算資源は，特定のアーキテクチャに固定された重みとして残る。推論時の特性を変えたいとき――
-たとえば文脈長に比例して増える KV キャッシュを減らしたいとき――通常はハイブリッドを新たに事前学習するか，既存モデルから
-系列混合の重みを蒸留し直すことになる。いずれも追加の学習を要するのであって，学習済みのブロックを凍結した部品として組み替えているわけではない。
+\maketitle
 
-既存の手法はこの制約を共有している。from-scratch のハイブリッドは全体を事前学習し，変換・蒸留の系統は新しい系列混合の
-重みを学習する。凍結したモデル同士を接合する研究も現れているが，両側が同一系統の Transformer に限られる。重み空間の
-マージは互換な重みを前提とする。\kw{完成済みの凍結チェックポイントを，系統をまたいだまま部品として組み替える}経路は
-空いたままである。
+\section{はじめに}\label{sec:intro}
+言語モデルの事前学習には膨大な計算を要するが，その成果は特定のアーキテクチャに固定された重みとしてしか残らない。
+推論時の特性を変えたいとき，たとえば文脈長に比例して増える KV キャッシュを減らしたいときには，再帰型の層と Transformer の
+層を混ぜたハイブリッドモデルを新たに事前学習するか，既存モデルの注意機構などの系列混合層を軽量な方式へ置き換えて
+変換または蒸留することになる。いずれもモデル本体の重みを新たに学習する方法であり，学習済みのブロックを凍結した
+部品として組み替えているわけではない。
+
+既存の手法はこの制約を共有している。一から学習するハイブリッドはモデル全体を事前学習し，変換・蒸留の系統は系列混合層の
+重みを学習し直す。凍結したモデル同士を接合する研究も現れているが，接合できるのは同一系統の Transformer どうしに限られる。
+重み空間でモデルを統合するマージ系の手法は，重みが互換であることを前提とする。\kw{完成済みの凍結チェックポイントを，
+系統をまたいだまま部品として組み替える}経路は空いたままである。
 
 本研究が検証するのはこの構想である。独立に学習された異種モデルの中間表現を相互に変換できれば，既存モデルは\kw{凍結
-された再利用可能な部品}になる。アダプタを一度学習すれば多数の接続位置が同時に使えるようになり，精度と推論メモリの
-トレードオフを，大規模な再学習なしに\emph{事後的に}探索できる。実際に本研究は単一のアダプタから $8$ 通りの構成
-（$4$ 切替位置 $\times$ $2$ 方向）を取り出し，その非支配集合を求めている。
+された再利用可能な部品}になる。アダプタを一度学習すれば多数の接続位置が同時に使えるようになり，以後は精度と推論メモリの
+トレードオフを，構成ごとの再学習なしに\emph{事後的に}探索できる。実際に本研究は $4$ 個の切替位置を両方向に用い，
+単一のアダプタから $8$ 通りの構成を取り出して非支配集合を求めている。ただしアダプタ自体の学習には相応の計算を要する。
+学習構成は\S\ref{sec:repro}に示す。本研究では，新たなハイブリッドの事前学習や蒸留に対する総学習費用の優位を検証していない。
 
-その第一歩として，本研究は\kw{NinaXander}\footnote{\emph{NinaXander} は『鋼の錬金術師』のキメラに由来する。合成は
-成立するが合成元には及ばない，という対応による。}――異なる系統の凍結ブロックを単一の学習済みアダプタで接続する
-\emph{キメラモデル}――を構築し，同一トークナイザ・同一幅・同一層数という好条件下の RWKV-4-Raven-7B と
+その第一歩として，本研究は，異なる系統の凍結ブロックを単一の学習済みアダプタで接続する\emph{キメラモデル}群
+\kw{NinaXander}\footnote{\emph{NinaXander} は『鋼の錬金術師』のキメラに由来する。合成は
+成立するが合成元には及ばない，という対応による。}を構築する。個々のモデルは，\S\ref{sec:method}で定義する
+系統横断経路と切替層の組で指定する。
+RWKV は線形注意の計算を再帰形式でも実行できるモデル族であり，Tulu-Pythia は指示チューニング済みの Transformer である。
+本研究では，同一トークナイザ・同一幅・同一層数という好条件下の RWKV-4-Raven-7B と
 Tulu-Pythia-6.9b を対象に，三つの問いを検証する。系統をまたぐ合成は成立するか。接続位置によって機能と KV 量はどう
 変わるか。何が接続を律速するか。
 
 結果は競争力のある新モデルではない。強い親モデルはどの構成でも超えない。示されるのは，凍結資産の事後的な再構成が
-部分的に可能であること，そして整合・復号・領域シフトがその障害になることである。具体的な利得は，Transformer を
+部分的に可能であること，そして整合の不完全さ・再構成誤差・領域シフトがその障害になることである。具体的な利得は，Transformer を
 $5$ 層だけ残して KV を $84.4\%$ 削減しつつ多肢選択の正答率の一部を保つ構成が存在することである。
-本研究の貢献は，(i) 共通モードを除いた整合測定，(ii) \RWKVself{}／\RtoP{}／\Pythiaself{}／\PtoR{} の四経路を比較する対照実験，
-(iii) \RtoP{}／\PtoR{} の両方でアダプタの非線形性を測る同一写像内の介入実験，
-(iv) 単一境界でのキメラモデル \RtoP{}／\PtoR{} における精度・メモリ・領域汎化と経路非対称性の実測である。
+本研究の貢献は四つある。共通モードを除いた整合測定，\RWKVself{}／\RtoP{}／\Pythiaself{}／\PtoR{} の
+四経路を比較する対照実験，\RtoP{}／\PtoR{} の両方でアダプタの非線形性を測る同一写像内の介入実験，および
+単一境界で合成した \RtoP{}／\PtoR{} キメラモデル群における精度・メモリ・領域汎化と経路非対称性の実測である。
 
 \section{背景と関連研究}\label{sec:related}
-\paragraph{残差ストリームと合成の形式}自己回帰言語モデルは，位置ごとの表現を残差ストリームとして層で更新する。
+\subsection{残差ストリームと合成の形式}
+自己回帰言語モデルは，位置ごとの表現を残差ストリームとして層で更新する。
 幅 $d$ のモデルのブロック $\ell$ は $h^{(\ell+1)}=h^{(\ell)}+f_\ell(h^{(\ell)})$ の形をとり，$f_\ell$ が系列混合と
 チャネル混合を担う。深さ境界 $L$ での合成とは，一方のモデルでブロック $0$ から $L$ まで走らせて得た $h^{(L+1)}$ を，
 他方のモデルのブロック $L{+}1$ の入力として与えることをいう。幅と層数が一致していても，$h^{(L+1)}$ はそれぞれの
 学習が定めた座標系にあり，一方の値をそのまま渡しても後段の重みが期待する分布とは一致しない。合成の可否は，
 したがって二つの系統の残差が相互に変換可能かという問いに帰着する。
 
-\paragraph{推論費用の非対称性}二つの系統は推論時の費用の増え方が異なる。softmax 注意を持つ層は過去のトークン
+\subsection{推論費用の非対称性}
+二つの系統は推論時の費用の増え方が異なる。softmax 注意を持つ層は過去のトークン
 すべての key と value を保持するため，文脈長 $T$ に対して $O(T)$ のキャッシュを要する。線形注意や等価な再帰形式で
 実行できる層は固定サイズの状態のみを持ち越すため $O(1)$ である。この非対称性が，本研究で合成が意味を持つ理由である。
 前段と後段のどちらに再帰型を置くかで残る Transformer 層数が変わり，保持すべきキャッシュ量も変わるからである。
 
-\paragraph{残差の尺度}残差の尺度は層ごとに異なり，系統間でも揃わない。したがって層をまたいで残差を比較するにも，
+\subsection{残差の尺度}
+残差の尺度は層ごとに異なり，系統間でも揃わない。したがって層をまたいで残差を比較するにも，
 境界で受け渡すにも，層ごとに推定した統計で標準化する必要がある。本研究がアダプタの入出力に層別の標準化と
-逆標準化を挟むのはこのためである（\S\ref{sec:method}）。
+逆標準化を挟むのはこのためである。具体的な処理は\S\ref{sec:method}で述べる。
 
-\paragraph{モデル・スティッチング}凍結した $2$ モデルの層を学習可能な接合層でつなぐ手法は，表現の\emph{等価性}を測る
+\subsection{モデル・スティッチング}
+凍結した $2$ モデルの層を学習可能な接合層でつなぐ手法は，表現の\emph{等価性}を測る
 ために Lenc と Vedaldi~\cite{10.1007/s11263-018-1098-y} が導入した。彼らは線形の接合層で一方の下層と他方の上層を
-接いだ「Franken-CNN」を元の課題損失で評価し，学習データの異なるネットワーク間（ImageNet と MIT Places）にも，
-異なるアーキテクチャ間（AlexNet，VGG-16，ResNet-50）にも適用している。Bansal ら~\cite{3540261.3540279} は表現比較の
-プローブとして再訪し，同一アーキテクチャ間で乱数種・学習量・幅・目的関数（教師ありと自己教師あり）を変えて接合する
-一方，異種アーキテクチャ間の接合は難点として残した。Csisz\'arik ら~\cite{NEURIPS2021_2cb274e6} は単一のアフィン接合層によって二つの学習済みネットワークの中間表現を対応付け、その一致を表現空間上の類似度だけでなく、接合後ネットワークのタスク性能という機能的観点から評価する枠組みを提案した。さらに、既存の表現類似度指標がタスク性能を必ずしも反映しないことを示した。本研究が整合と復号可能性を分けて評価するのは，この立場に沿う。いずれも視覚モデルであり，本研究は異なる\emph{系統}（RNN$\leftrightarrow$Transformer）を
+接いだ「Franken-CNN」を元の課題損失で評価した。対象には，ImageNet と MIT Places という異なる学習データを用いた
+ネットワークの組だけでなく，AlexNet，VGG-16，ResNet-50 という異なるアーキテクチャの組も含まれる。
+Bansal ら~\cite{3540261.3540279} は表現比較のプローブとして再訪し，同一アーキテクチャ間で乱数種・学習量・幅を変え，
+教師あり学習と自己教師あり学習という異なる目的関数の間でも接合する
+一方，異種アーキテクチャ間の接合は難点として残した。Csisz\'arik ら~\cite{NEURIPS2021_2cb274e6} は単一のアフィン接合層によって二つの学習済みネットワークの中間表現を対応付け，その一致を表現空間上の類似度だけでなく，接合後ネットワークのタスク性能という機能的観点から評価する枠組みを提案した。さらに，既存の表現類似度指標がタスク性能を必ずしも反映しないことを示した。本研究が整合と復号可能性を分けて評価するのは，この立場に沿う。いずれも視覚モデルであり，本研究は RNN と Transformer という異なる\emph{系統}を
 各層で $1$ 度だけ翻訳する共有潜在で接合する点で異なる。
-\paragraph{凍結 LLM の合成}近年は凍結した LLM どうしを学習可能な接続で合成する研究が続いている。
+\subsection{凍結 LLM の合成}
+近年は凍結した LLM どうしを学習可能な接続で合成する研究が続いている。
 StitchLLM~\cite{hu-etal-2025-stitchllm} は規模の異なる Transformer のブロックを stitching 層で接いで serving 時に
 経路を選び，BTS~\cite{zhang-etal-2025-bts} は同一シードから分岐した凍結専門家群と凍結シードの間で，
 Experts-into-Hub と Hub-into-Experts の stitch 層を数層おきに交互に挿入して隠れ状態を\emph{双方向}に交換する。
 CALM~\cite{bansal2024llm} は凍結した 2 つの Transformer の中間表現を cross-attention で融合し，
 Manticore~\cite{roberts2025pretrained} は Transformer と Mamba のブロック列を射影付きで\emph{並列に実行}し，
-学習された凸結合で混ぜたハイブリッドを end-to-end に微調整する（埋め込みと LM ヘッドは新規初期化される）。
-凍結モデル間で活性そのものを翻訳する研究も現れている。Moschella ら~\cite{moschella2023relative} は固定アンカーへの相対表現によって独立に学習された潜在空間を隔てる変換を吸収し，翻訳器を学習せずに接合できることを示した。Maiorca ら~\cite{3666122.3668540} は少数の意味的対応から二つの潜在空間の間の写像を閉形式で推定する。表~\ref{tab:bench} のアフィン対照はこうした低容量の直接写像に対応する基準であり（ただし本研究の対照は対応残差を教師として直接適合するため，zero-shot の相対表現より強い条件にある），\RtoP{} ではアダプタが $8$--$23$ 点上回る一方，\PtoR{} では差が小さく SciQ @8 では逆転する。Model Alignment Search~\cite{grant2025model} は凍結した再帰型
+学習された凸結合で混ぜたハイブリッドを end-to-end に微調整する。このとき埋め込みと LM ヘッドは新規に初期化される。
+
+凍結モデル間で活性そのものを翻訳する研究も現れている。Moschella ら~\cite{moschella2023relative} は固定アンカーへの相対表現によって独立に学習された潜在空間を隔てる変換を吸収し，翻訳器を学習せずに接合できることを示した。Maiorca ら~\cite{3666122.3668540} は少数の意味的対応から二つの潜在空間の間の写像を閉形式で推定する。表~\ref{tab:bench} のアフィン対照は，こうした低容量の直接写像に対応する基準である。
+
+Model Alignment Search~\cite{grant2025model} は凍結した再帰型
 ネットワークと凍結 Transformer の間で活性を双方向に写像するが，表現の類似度を測る手法であって合成モデルを構築しない。
 Chen ら~\cite{chen2025transferring} は凍結した 2 つの言語モデルの残差ストリームを単一層で双方向にアフィン写像し，
 一方の前段と他方の後段をつないだ合成モデルの次トークン交差エントロピーまで評価する。ただし対象は同一系統・同一
-トークナイザの Transformer 対に限られ，著者自身が異種系統での検証を今後の課題として挙げている。プレプリントの
+トークナイザの Transformer 対に限られ，著者自身が異種系統での検証を今後の課題として挙げている。
+
+プレプリントの
 Bicameral Model~\cite{flamant2026bicameralmodelbidirectionalhiddenstate} は凍結した 2 つの言語モデルを双方向の
 翻訳網で結合するが，各モデルが自身の全段を実行したまま並列に走る。同じくプレプリントの GoldFinch~\cite{goldstein2024goldfinchhighperformancerwkvtransformer} は RWKV-6 の上に
 Transformer を積む単一境界の構成で KV キャッシュを $756$--$2550$ 倍圧縮するが，事前学習済みの親を組み合わせるのではなく
 スクラッチから学習する。Oozeer ら~\cite{oozeer2025activation} は異なる系統の凍結 LLM の間で活性の写像を学習し，安全性介入やステアリングベクトルを転送する。アフィン対照を併記する点も含めて本研究に近いが，単一層での転送に留まり，モデルを合成して走らせることはしない。
-ただし，これらは両側が Transformer であるか，合成体を微調整するか（Manticore），事前学習済みの親を一つしか持たない。
+本研究のアフィン対照は対応残差を教師として直接適合するため，zero-shot の相対表現より強い条件にある。
+
+以上の先行研究は，両側が Transformer であるか，Manticore のように合成体を微調整するか，事前学習済みの親を一つしか持たない。
 単一境界・双方向・親凍結という接合機構それ自体は，Chen ら~\cite{chen2025transferring} が同一系統・同一トークナイザの
 Transformer 対で既に確立しており，本研究はその機構の新規性を主張しない。本研究が扱うのは，彼らが未解決として残した
-\emph{異種系統}の場合である。両モデルは事前学習コーパスとして The Pile を共有するが，その上位では共有しない。
-アーキテクチャは無関係であり，深さの意味的な対応も整合すべき注意状態も存在せず，指示チューニングの混合データも
-プロンプト形式も異なる（重複するのは ShareGPT と Code-Alpaca のみである）。この条件で，線形注意の再帰モデルと
-Transformer の間に同じ接合が成立するかが問いである。なお共有コーパスは交絡をむしろ除く。両モデルが異なる分布を
-見たから接合が難しい，という説明が使えなくなるからである。我々の知る限り，この二系統を両親と
+\emph{異種系統}の場合である。線形注意の再帰モデルと Transformer の間でも同じ接合が成立するかを検証する。
+我々の知る限り，この二系統を両親と
 LM ヘッドを凍結したまま単一境界で合成し，動作する生成器として評価した研究はない。あわせて，その合成が Transformer の
 KV キャッシュに与える削減量を報告する。
-\paragraph{表現類似度}中心化カーネル整合（CKA）~\cite{pmlr-v97-kornblith19a} や (SV/PW)CCA~\cite{3295222.3295356,3327345.3327475} はネットワーク間の表現
-類似度を測る標準的な道具である。本研究はこれらを補助指標として用いつつ（\S\ref{sec:space} の全層対応），主眼を
-\emph{再構成を介した機能的な}接合に置く。系統をまたぐ表現の普遍性については，Wang ら~\cite{wang2025towards} が Transformer と Mamba の間で疎自己符号器の特徴と誘導回路が概ね類似することを報告しており，先行する証拠を与える（ただし対象は Mamba であって RWKV ではない）。
-\paragraph{モデルマージ・知識統合}重み空間でモデルを統合する model soups~\cite{pmlr-v162-wortsman22a}，TIES~\cite{3666122.3666432}，進化的マージ~\cite{Akiba2025} は，
+\subsection{表現類似度}
+中心化カーネル整合，すなわち CKA~\cite{pmlr-v97-kornblith19a} や SVCCA／PWCCA~\cite{3295222.3295356,3327345.3327475} はネットワーク間の表現
+類似度を測る標準的な道具である。本研究はこれらを補助指標として全層対応を調べる一方，主眼を
+\emph{再構成を介した機能的な}接合に置く。系統をまたぐ表現の普遍性については，Wang ら~\cite{wang2025towards} が Transformer と Mamba の間で疎自己符号器の特徴と誘導回路が概ね類似することを報告しており，先行する証拠を与える。ただし，彼らの対象は Mamba であって RWKV ではない。
+\subsection{モデルマージ・知識統合}
+重み空間でモデルを統合する model soups~\cite{pmlr-v162-wortsman22a}，TIES~\cite{3666122.3666432}，進化的マージ~\cite{Akiba2025} は，
 \emph{同一または互換な}重みを前提とする。出力分布を融合する FuseLLM~\cite{wan2024knowledge} は重みの互換を要しないが，
 語彙間のトークン整列と対象モデルの継続学習を必要とする。本研究は重みを
 一切マージせず\emph{活性化空間}を翻訳して凍結ブロックを組み替える点で相補的である。
 
-\paragraph{対象モデル}RWKV~\cite{peng-etal-2023-rwkv} は softmax 内積注意をチャネル方向の線形注意（WKV 作用素）に置き換えたアーキテクチャで，等価な再帰形式でも実行できるため，推論時には文脈長とともに伸びる KV キャッシュではなく層あたり定数サイズの状態を持つ。本研究ではその第 4 世代の指示追従版 RWKV-4-Raven-7B を用いる。Pythia~\cite{3618408.3618510} とその Tulu SFT~\cite{3666122.3669390}
-版は Transformer である。
-
 \section{手法}\label{sec:method}
-対象は，同じ層数（$32$）・同じ幅（$d{=}4096$）・同じ GPT-NeoX トークナイザを共有する指示追従モデルとして選んだ
-RWKV-4-Raven-7B と Tulu-Pythia-6.9b である。トークナイザの共有が位置対応した残差ペアを可能にし，層数と幅の一致が
-層の対応付けを自明にする。これは合成に有利な条件を意図して揃えたものであり，同時に主張の射程を狭める選択でもある
-（\S\ref{sec:limitations}）。
+\subsection{対象モデル}
+本研究では，指示追従モデルである RWKV-4-Raven-7B と Tulu-Pythia-6.9b を用いる。以下では前者をモデル $A$，
+後者をモデル $B$ と書く。いずれも $32$ ブロック，隠れ幅 $d{=}4096$ であり，GPT-NeoX-20B トークナイザを共有する。
+したがって，同じ入力を同じトークン列に変換でき，各位置の残差をそのまま対応付けられる。層数が同じなので第 $j$ ブロック
+どうしを組にでき，隠れ幅が同じなので境界でベクトルの次元も揃う。この三条件は接続を容易にするため意図的に選んだものであり，
+トークナイザ，層数，隠れ幅が異なるモデル対は本研究の対象外である。
 
-\paragraph{残差ペア} トークナイザを共有する凍結 $A,B$ に\emph{同一}テキストを与え，位置 $t$・ブロック $j$ の
-出力 $r_A^j[t]$ と $r_B^j[t]$ を対応づけ，両系統・全 $32$ 層を同種の量として扱う（取得実装の詳細は付録~\ref{sec:repro}）。
+両者の基盤モデルは，EleutherAI が構築した英語コーパス The Pile~\cite{gao2020pile} で事前学習されている。
+The Pile は，学術文書，ウェブ文書，書籍，ソースコードなど $22$ 種類のデータを集めた $825$ GiB の言語モデル用コーパスである。
+基盤コーパスが共通する一方，その後の指示チューニングに用いたデータとプロンプト形式は異なる。
 
-\paragraph{共有潜在アダプタ} 各モデルに符号器・復号器を $1$ 組ずつ置き，全層に共通する\emph{単一}の潜在 $z$ へ写す：
-\[
+RWKV~\cite{peng-etal-2023-rwkv} は，softmax 内積注意の代わりに WKV 作用素による線形時間の系列混合を用い，
+同じ計算を並列形式と再帰形式のどちらでも実行できる。本研究で用いる Raven は，RWKV プロジェクトが開発し BlinkDL が
+公開した RWKV-4 の指示追従版である。元の RWKV-4-Pile-7B に対し，一般的な指示データである Alpaca，Guanaco，
+GPT4All，コード課題を集めた Code-Alpaca，会話データを集めた ShareGPT などで追加学習している。
+Code-Alpaca は，コード生成，編集，最適化を中心とする約 $20{,}000$ 件の指示と応答からなる合成データである
+~\cite{codealpaca}。
+ShareGPT は，利用者が共有した ChatGPT との複数ターンの会話を集めたデータである
+~\cite{lmsys-fastchat}。
+本研究では BlinkDL が配布した Raven 7B を Hugging Face 形式へ変換し，fp16 で再保存して用いる
+\footnote{BlinkDL，RWKV-4 Raven モデルリポジトリ，
+\url{https://huggingface.co/BlinkDL/rwkv-4-raven}。}。
+実際に使用した重みは $7{,}392{,}649{,}216$ パラメータであり，$32$ ブロック，隠れ幅 $4096$，内部幅 $16384$ を持つ。
+変換後の設定では \texttt{context\_length} が $1024$ である。これは一回の順伝播で扱う最大系列長として定義された値であり，
+再帰形式では文脈長に依存しない大きさの状態を引き継げる\footnote{Hugging Face Transformers，RWKV ドキュメント，
+\url{https://huggingface.co/docs/transformers/model_doc/rwkv}。}。ただし，変換元の \texttt{.pth} ファイル名とリビジョンは
+保存されていないため，上流チェックポイントが掲げた学習時のコンテキスト長は特定できない。再帰形式の性質も，
+学習時または設定上の長さを超えた言語性能を保証しない。
+
+Pythia~\cite{3618408.3618510} は EleutherAI が研究用に開発した GPT-NeoX 系 Transformer 群である。
+Tulu-Pythia-6.9b は，その Pythia-6.9b を Allen Institute for AI が Tulu の混合指示データで全パラメータ微調整した
+モデルである~\cite{3666122.3669390}。混合データには一般課題と推論課題を集めた FLAN V2，Chain-of-Thought，Dolly，
+OpenAssistant 1，GPT4-Alpaca に加え，Code-Alpaca と ShareGPT が含まれる\footnote{Allen Institute for AI，
+\emph{open-instruct-pythia-6.9b-tulu} model card，
+\url{https://huggingface.co/allenai/open-instruct-pythia-6.9b-tulu}。}。
+本研究で使用した重みは $6{,}856{,}040{,}448$ パラメータであり，$32$ ブロック，隠れ幅 $4096$，
+$32$ 個の注意ヘッドを持つ。設定上の最大位置数は $2048$ である\footnote{公開モデルの設定ファイルは
+\url{https://huggingface.co/allenai/open-instruct-pythia-6.9b-tulu/blob/main/config.json} にあり，
+\texttt{max\_position\_embeddings} は $2048$ とされている。}。
+両モデルの指示チューニング用データを配布元の記載に基づいて比較すると，共通する名称は Code-Alpaca と ShareGPT である。
+したがって，二つのモデルは完全に独立なデータで学習されたわけではない。一方，アーキテクチャと指示データの大部分は異なる。
+
+\subsection{残差ペアと記号}
+本稿でいう残差は誤差ではなく，各ブロックから次のブロックへ渡される隠れベクトルを指す。モデルを接続するとは，
+このベクトルを一方のモデルの座標系から他方の座標系へ変換して渡すことである。
+モデル $M\in\{A,B\}$ の第 $j$ ブロック直後に，トークン位置 $t$ で得られる未標準化の残差を
+$r_M^j[t]\in\mathbb R^{4096}$ と書く。ブロック番号は $j\in\{0,\ldots,31\}$ であり，$t$ は入力中のトークン位置である。
+同じトークン列を両モデルへ与え，$r_A^j[t]$ と $r_B^j[t]$ を一組の学習例とする。
+
+残差の尺度はモデルと層によって異なるため，各層の学習データから次元別の平均と標準偏差を求める。
+$\mathrm{std}_M^j$ はこの統計量で残差を標準化する操作，$\mathrm{unstd}_M^j$ は元の尺度へ戻す逆操作を表す。
+標準化後の残差を $x_M^j[t]=\mathrm{std}_M^j(r_M^j[t])$ と書く。以下の学習式では読みやすさのため層番号 $j$ と
+トークン位置 $t$ を省略し，$x_A,x_B$ と表す。
+
+\subsection{共有潜在アダプタ}
+アダプタは，各モデルに一つの符号器と一つの復号器を持つ。$E_A,E_B$ は標準化残差を共有潜在空間へ移す符号器，
+$D_A,D_B$ は共有潜在から各モデルの標準化残差を復元する復号器である。下付きの $A,B$ は，その写像が属するモデルを示す。
+$z_A,z_B\in\mathbb R^{d_z}$ は，同じトークン位置から得た二つの潜在ベクトルであり，潜在幅は $d_z{=}4096$ である。潜在整合誤差を二つの自己再構成誤差に対して
+どの程度重視するかを定めるハイパーパラメータを $\lambda\geq0$ とし，学習目的を次式で定める。
+\begin{equation}\label{eq:adapter-objective}
 \begin{aligned}
-z_A &= \mathrm{LN}(E_A(r_A)),\qquad z_B = \mathrm{LN}(E_B(r_B)),\\
+z_A &= \mathrm{LN}(E_A(x_A)),\qquad z_B = \mathrm{LN}(E_B(x_B)),\\
 \mathcal{L} &=
-\|D_A(z_A{+}\xi_A){-}r_A\|^2+\|D_B(z_B{+}\xi_B){-}r_B\|^2\\
+\|D_A(z_A{+}\xi_A){-}x_A\|^2+\|D_B(z_B{+}\xi_B){-}x_B\|^2\\
 &\quad+\lambda\|z_A{-}z_B\|^2 .
 \end{aligned}
-\]
-$\xi_A,\xi_B\sim\mathcal N(0,\sigma^2 I)$（枝ごとに独立にサンプルする），$\lambda{=}1$，$\mathrm{LN}$ は非アフィン，$\sigma$ は $0.4$ とした。$E,D$ は浅い残差
-MLP。横断写像 $A\!\to\!B := D_B(z_A)=D_B(\mathrm{LN}(E_A(r_A)))$ と
-$B\!\to\!A := D_A(z_B)=D_A(\mathrm{LN}(E_B(r_B)))$ のいずれにも横断的な教師目標を与えない。すなわち $r_A$ は $B$ の再構成損失に，$r_B$ は $A$ の再構成損失に現れないよう学習するが，横断写像が「教師なし」で得られると主張するものではない。本論文が検証するのは\emph{単純な}変換で空間が揃うことなので，表現力の大きい重いアダプタは用いず，写像の深さを残差ブロック 1 個に制限し，パラメータ数と \RtoP{}／\PtoR{} の線形対照を併記する
-（\S\ref{sec:linear}）。
+\end{equation}
+式~\eqref{eq:adapter-objective} の第 $1$ 項と第 $2$ 項は，それぞれ $A$ と $B$ の残差を元のモデルへ復元する自己再構成誤差である。
+第 $3$ 項は，同じトークン位置から得た $z_A$ と $z_B$ を近づける潜在整合誤差である。$\lambda$ が大きいほど，学習損失 $\mathcal L$ における
+第 $3$ 項の相対的な重みが大きくなる。各ノルムは，全トークンと全次元にわたる平均二乗誤差として計算する。
+$\mathrm{LN}$ は学習可能な倍率と切片を持たない LayerNorm である。$\xi_A,\xi_B\sim\mathcal N(0,\sigma^2 I)$ は復号前だけに加える，
+平均 $0$ の独立なガウスノイズである。$\sigma>0$ はノイズの標準偏差を定めるハイパーパラメータ，$I$ は $d_z{\times}d_z$ の単位行列である。
+本研究のアダプタ学習では $\lambda{=}1$，$\sigma{=}0.4$ に固定する。$\lambda{=}1$ は三つの平均二乗誤差項に同じ係数 $1$ を与える設定であり，
+学習中の各項の実測値が等しいことを意味しない。層・経路・課題ごとの調整や，両値のアブレーションは行っていない。
+
+この損失には，$A$ の残差から $B$ の残差を直接当てる項も，その逆を当てる項も含まれない。横断写像では，
+$A$ の符号器で得た $z_A$ を $B$ の復号器へ渡し，$D_B(z_A)$ を得る。逆方向では $D_A(z_B)$ を用いる。
+これらが成立するには，第 $3$ 項によって $z_A$ と $z_B$ が同じ座標系に揃う必要がある。対応する残差ペアを用いているため，
+横断目標を直接与えていないことを「教師なし学習」とは呼ばない。
 
 \begin{figure*}[!t]\centering
 \begin{tikzpicture}[
-  font=\footnotesize, >={Stealth[length=2mm]},
+  font=\small, >={Stealth[length=2mm]},
   box/.style={draw,rounded corners=2pt,minimum height=6mm,minimum width=9mm,align=center},
   encA/.style={box,fill=blue!8},   decA/.style={box,fill=blue!22},
   encB/.style={box,fill=orange!10}, decB/.style={box,fill=orange!26},
   lat/.style={draw,circle,minimum size=7mm,fill=green!12,align=center},
   sup/.style={->,thick}, cross/.style={->,thick,densely dashed,red!70!black}]
-\node (rA) {$r_A$};
-\node[encA,right=6mm of rA] (EA) {$E_A$};
-\node[lat,right=9mm of EA] (zA) {$z_A$};
-\node[decA,right=20mm of zA] (DA) {$D_A$};
-\node[right=15mm of DA] (rAo) {$\hat r_A$};
-\node[below=11mm of rA] (rB) {$r_B$};
-\node[encB,right=6mm of rB] (EB) {$E_B$};
-\node[lat,right=9mm of EB] (zB) {$z_B$};
-\node[decB,right=20mm of zB] (DB) {$D_B$};
-\node[right=15mm of DB] (rBo) {$\hat r_B$};
-\node[draw,fill=yellow!25,inner sep=1pt,right=4mm of zA,yshift=4mm] (nA) {$+\xi_A$};
-\node[draw,fill=yellow!25,inner sep=1pt,right=4mm of zB,yshift=-4mm] (nB) {$+\xi_B$};
-\draw[sup] (rA)--(EA); \draw[sup] (EA)--node[above,inner sep=1pt]{\tiny LN} (zA);
-\draw[sup] (rB)--(EB); \draw[sup] (EB)--node[below,inner sep=1pt]{\tiny LN} (zB);
+\node (xA) {$x_A$};
+\node[encA,right=8mm of xA] (EA) {$E_A$};
+\node[lat,right=14mm of EA] (zA) {$z_A$};
+\node[decA,right=40mm of zA] (DA) {$D_A$};
+\node[right=22mm of DA] (xAo) {$\hat x_A$};
+\node[below=20mm of xA] (xB) {$x_B$};
+\node[encB,right=8mm of xB] (EB) {$E_B$};
+\node[lat,right=14mm of EB] (zB) {$z_B$};
+\node[decB,right=40mm of zB] (DB) {$D_B$};
+\node[right=22mm of DB] (xBo) {$\hat x_B$};
+\node[draw,fill=yellow!25,inner sep=1pt,right=12mm of zA,yshift=6mm] (nA) {$+\xi_A$};
+\node[draw,fill=yellow!25,inner sep=1pt,right=12mm of zB,yshift=-6mm] (nB) {$+\xi_B$};
+\draw[sup] (xA)--(EA); \draw[sup] (EA)--node[above,inner sep=1pt]{LN} (zA);
+\draw[sup] (xB)--(EB); \draw[sup] (EB)--node[below,inner sep=1pt]{LN} (zB);
 \draw[sup] (zA) to[out=20,in=160] (nA.west); \draw[sup] (nA.east) to[out=-20,in=160] (DA);
 \draw[sup] (zB) to[out=-20,in=200] (nB.west); \draw[sup] (nB.east) to[out=20,in=200] (DB);
-\draw[sup] (DA)--node[above,inner sep=1pt,font=\scriptsize]{$A\!\to\!A$}(rAo);
-\draw[sup] (DB)--node[below,inner sep=1pt,font=\scriptsize]{$B\!\to\!B$}(rBo);
-\draw[<->,thick,green!45!black] (zA)--node[fill=white,inner sep=1pt]{$\lambda\lVert z_A{-}z_B\rVert^2$} (zB);
+\draw[sup] (DA)--node[above,inner sep=1pt]{$A\!\to\!A$}(xAo);
+\draw[sup] (DB)--node[below,inner sep=1pt]{$B\!\to\!B$}(xBo);
+\draw[<->,thick,green!45!black] (zA)--node[left,inner sep=2pt]{$\lambda\lVert z_A{-}z_B\rVert^2$} (zB);
 \draw[cross] (zA) to[out=-35,in=150]
-  node[pos=0.58,below=1pt,font=\scriptsize,fill=white,inner sep=0.5pt] {$A\!\to\!B$} (DB);
+  node[pos=0.72,below=1pt,fill=white,inner sep=0.5pt] {$A\!\to\!B$} (DB);
 \draw[cross] (zB) to[out=35,in=210]
-  node[pos=0.58,above=1pt,font=\scriptsize,fill=white,inner sep=0.5pt] {$B\!\to\!A$} (DA);
-\node[align=center,above=1mm of zA,font=\scriptsize] {共有潜在\\(非アフィン LN)};
-\node[draw,rounded corners=2pt,fill=gray!4,inner sep=3pt,font=\scriptsize,align=left,
-      below=6mm of rB,anchor=north] at ($(rB)!0.5!(rBo)+(0,-6mm)$) {%
-\textcolor{black}{\rule[0.4ex]{3mm}{0.7pt}}~教師あり（$\mathcal L$ 内）：$D_A(z_A{+}\xi_A){\to}r_A$，$D_B(z_B{+}\xi_B){\to}r_B$，整合項。\\[1pt]
-\textcolor{red!70!black}{\rule[0.4ex]{1mm}{0.7pt}\,\rule[0.4ex]{1mm}{0.7pt}}~横断読み出し \RtoP{}／\PtoR{} は損失に\emph{一切}現れない（破線）。};
+  node[pos=0.72,above=1pt,fill=white,inner sep=0.5pt] {$B\!\to\!A$} (DA);
+\node[align=center,above=1mm of zA] {共有潜在\\非アフィン LN};
+\node[draw,rounded corners=2pt,fill=gray!4,inner sep=3pt,align=left,
+      below=6mm of xB,anchor=north] at ($(xB)!0.5!(xBo)+(0,-6mm)$) {%
+\textcolor{black}{\rule[0.4ex]{3mm}{0.7pt}}~$\mathcal L$ で教師を与える経路：$D_A(z_A{+}\xi_A){\to}x_A$，$D_B(z_B{+}\xi_B){\to}x_B$，整合項。\\[1pt]
+\textcolor{red!70!black}{\rule[0.4ex]{1mm}{0.7pt}\,\rule[0.4ex]{1mm}{0.7pt}}~破線の横断読み出し \RtoP{}／\PtoR{} は損失に\emph{一切}現れない。};
 \end{tikzpicture}
-\caption{共有潜在アダプタ。各凍結モデルの残差を\emph{単一}の潜在 $z$（非アフィン LayerNorm）に符号化し，自系統へ
-復号する（実線の経路にて再構成と整合項 $\lambda\lVert z_A{-}z_B\rVert^2$ が損失関数となり学習が行われる）。ガウスノイズ
-$\xi_A,\xi_B\!\sim\!\mathcal N(0,\sigma^2)$（独立）は\emph{復号の直前にのみ} $z$ へ加わり，整合項には乗らない。実線の
-$A\!\to\!A$（\RWKVself{}）と $B\!\to\!B$（\Pythiaself{}）は自系統再構成，破線の
-$A\!\to\!B$（\RtoP{}）と $B\!\to\!A$（\PtoR{}）は横断読み出しである。後二者は横断目標に一度も適合されず，
-整合項が $z_A{\approx}z_B$ を作って初めて成立する。
-色は全図共通で系統を表す：青が RWKV 側，橙が Pythia 側，緑が共有アダプタである。濃淡は役割の区別で，淡い方が符号器，濃い方が復号器を指す。}
+\caption{共有潜在アダプタ。実線は式~\eqref{eq:adapter-objective} で学習する自己再構成，破線は損失に直接含まれない
+横断読み出しを表す。$x_A,x_B$ は層別標準化残差であり，ノイズは復号直前だけに加える。}
 \label{fig:adapter}
 \end{figure*}
 
-\paragraph{アダプタの構造} $E_A,E_B,D_A,D_B$ は同形：潜在幅への線形射影，$b$ 個の
-pre-norm 残差ブロック，出力への線形射影。報告する構成は $z{=}d{=}4096$，$b{=}1$，内部幅 $h{=}4096$ である。
-各残差ブロックの第 2 行列は\kw{ゼロ初期化}なので，初期状態で各ブロックは恒等写像であり，\emph{$E$ と $D$ は線形写像
-から学習を始める}（両者の間に非アフィン LN が入るため，横断写像全体は初期状態でも線形ではない）。ただしこれは初期化の性質であって学習後の性質ではない：\S\ref{sec:linear} で測るように，収束後の
-写像は \RtoP{}／\PtoR{} の出力分散の $13.4\%/12.0\%$ が非線形であり，同じ非線形枝が両横断読み出しを担う。
-親モデルの合計 $14.2$B パラメータに対し，
-アダプタは $268.5$M（$1.9\%$）である。本論文で主張する軽量とは絶対的な小ささではなく，親モデルに対する相対量と低い層の深度を指す。
+各符号器と復号器は同じ構造を持ち，線形射影，$b$ 個の pre-norm 残差ブロック，出力への線形射影からなる。
+報告する構成は潜在幅 $4096$，残差ブロック数 $b{=}1$，内部幅 $4096$ である。
+各残差ブロックの第 2 行列は\kw{ゼロ初期化}するため，初期状態の各ブロックは恒等写像となり，\emph{$E$ と $D$ は線形写像
+から学習を始める}。ただし両者の間には非アフィン LN が入るので，横断写像全体は初期状態でも線形ではない。
+ゼロ初期化は学習開始時だけの性質であり，学習後の写像が線形であることを意味しない。親モデルの合計 $14.25$B パラメータに対し，
+アダプタは $268.5$M であり，その比率は $1.9\%$ である。本論文でいう軽量とは，絶対的な小ささではなく，
+親モデルに対する相対量と低い層の深度を指す。
 
-ノイズ $\xi$ は，潜在がトークン非依存の定数（\emph{共通モード}）だけで整合項を満たしてしまうことを抑えるために置く。
-定数はノイズを回避できない，というのが設計上の根拠である。$\sigma{=}0.4$ は固定して用い，
-$\sigma$ のアブレーションは本論文では取り扱わないため，この効果そのものは検証していない。
+ノイズ $\xi$ は，潜在が\emph{共通モード}と呼ぶトークン非依存の定数だけで整合項を満たしてしまうことを抑えるために置く。
+定数はノイズを回避できない，というのが設計上の根拠である。$\sigma{=}0.4$ に固定し，効果のアブレーションは行わない。
 
-\paragraph{4 経路の名称とキメラ} 数式では $A$ を RWKV，$B$ を Tulu-Pythia と置くが，分かりやすさのため本文と図表では二文字コードを使わず，前段と後段を明示する。
+\subsection{四経路とキメラの構成}
 四経路は \RWKVself{}，\RtoP{}，\Pythiaself{}，\PtoR{} である。
 \RtoP{} と \PtoR{} は系統横断キメラ，\RWKVself{} と \Pythiaself{} は同じ境界・アダプタを通る
-自系統再構成対照である。切替層 $L$ は前段親が最後に実行するブロックの添字（$0$ 始まり）であって，
-実行する層数ではない――ブロック $0$ を含むため前段は $L{+}1$ 個になる。
-\RtoP{} では，$A$ の最初の $L{+}1$ ブロック（ブロック $0$ から $L$）を走らせ，
-残差を\emph{一度}だけ $B$ 空間へ翻訳する：
-$h_B{=}\mathrm{unstd}_B(D_B(\mathrm{LN}(E_A(\mathrm{std}_A(h_A)))))$。続いて $B$ の残り $31{-}L$
-ブロック（$L{+}1$ 以降）と言語モデルヘッドを走らせる。\PtoR{} も
-同じ学習済みアダプタで別個に評価し，
-$h_A{=}\mathrm{unstd}_A(D_A(\mathrm{LN}(E_B(\mathrm{std}_B(h_B)))))$ を RWKV ブロック $L{+}1$ の入力へ
-挿入する。いずれも合計は $32$ ブロック，内訳は $L{+}1$ と $31{-}L$ であり，翻訳は 1 回だけである。
+自系統再構成対照である。切替層 $L$ は $0$ から始まる添字であり，前段親が最後に実行するブロックを表す。
+ブロック $0$ も数えるため，前段が実行するブロック数は $L{+}1$ となる。
+ここで $h_A^L[t]$ は，$A$ のブロック $L$ がトークン位置 $t$ に出力する未標準化の残差である。$h_B^L[t]$ も同様に
+$B$ のブロック $L$ が出力する残差を表す。これらを相手側の座標系へ翻訳した残差にはチルダを付ける。
+$x_A^L[t]=\mathrm{std}_A^L(h_A^L[t])$ と $x_B^L[t]=\mathrm{std}_B^L(h_B^L[t])$ を用いると，切替境界は次式となる。
+\begin{equation}\label{eq:boundary}
+\begin{aligned}
+\widetilde h_B^L[t]
+ &= \mathrm{unstd}_B^L\!\left(D_B\!\left(\mathrm{LN}(E_A(x_A^L[t]))\right)\right),\\
+\widetilde h_A^L[t]
+ &= \mathrm{unstd}_A^L\!\left(D_A\!\left(\mathrm{LN}(E_B(x_B^L[t]))\right)\right).
+\end{aligned}
+\end{equation}
+チルダ付きの $\widetilde h_B^L[t]$ は $B$ のブロック $L{+}1$ へ，$\widetilde h_A^L[t]$ は $A$ のブロック $L{+}1$ へ入力する。
+式~\eqref{eq:boundary} には学習時ノイズを加えない。実行手順は，前段親のブロック $0$ から $L$ を走らせ，残差を一度だけ
+翻訳し，後段親のブロック $L{+}1$ から $31$ と言語モデルヘッドを走らせる，という三段階である。
+したがって，どのキメラも合計 $32$ ブロックを実行し，その内訳は前段 $L{+}1$ ブロックと後段 $31{-}L$ ブロックになる。
 
-\paragraph{評価指標} 未学習の文章に対する決定係数 $\Rsq$（層内の全トークン・全次元をプールし，SST は次元ごとに中心化）を，系統をまたぐ写像
-（$A\!\to\!B$，$B\!\to\!A$）と自系統の写像（$A\!\to\!A$，$B\!\to\!B$）の双方について測る。潜在の整合は\kw{中心化}
-相関 $\rho_{\mathrm{ctr}}$で測り，あわせてトークンごとに変動する成分の割合 $f$ を報告する。
-両者は整合項と $2f(1{-}\rho_{\mathrm{ctr}})$ の関係で結ばれる（指標の厳密な定義は付録~\ref{sec:common-mode}）。
-各指標は層ごとに全トークン上で算出し，$32$ 層にわたる単純平均を報告する。
-キメラについては，英語プロンプトを原文どおり与え，温度 $0$ の決定的 argmax（最大 $40$ 新規トークン，
-EOS 出力時のみ早期終了）による生成例，多肢選択の正答率，および次トークン交差エントロピーで評価する。
+\subsection{評価指標}\label{sec:common-mode}
+残差をどの程度復元できたかは決定係数 $\Rsq=1-\mathrm{SSE}/\mathrm{SST}$ で測る。$\mathrm{SSE}$ は予測残差と正解残差の差の二乗和，
+$\mathrm{SST}$ は正解残差から次元ごとのトークン平均を引いた値の二乗和である。値が $1$ なら完全に復元でき，
+$0$ なら各次元の平均を常に返す予測と同程度であり，負の値ならその平均予測より悪い。系統をまたぐ $A\!\to\!B$ と
+$B\!\to\!A$ に加え，同じアダプタを往復する $A\!\to\!A$ と $B\!\to\!B$ も測る。後二者は，系統をまたぐ前から
+符号化と復号だけでどれほど情報が失われるかを示す対照である。
+
+$\Rsq$ は層ごとに保留トークンと全 $4096$ 次元をプールして計算する。$\mathrm{SST}$ は次元ごとにトークン平均を除いた全変動なので，
+分散の大きい次元ほど寄与が大きい。潜在空間の一致度は中心化相関 $\rho_{\mathrm{ctr}}$ で測る。これは，各次元から
+トークン平均を引いた $z_A,z_B$ を平坦化して求める Pearson 相関である。$1$ に近いほど二つの潜在が同じ方向へ変化し，
+$0$ は線形相関がないことを表す。さらに，潜在のうちトークンごとに変動する成分の割合を
+$f=\lVert z-\overline z\rVert^2/\lVert z\rVert^2$ とする。$\overline z$ は層内の次元別トークン平均であり，
+$f$ は $A$ と $B$ で別々に求めて平均する。各指標は層ごとに算出し，$32$ 層の単純平均を報告する。
+
+保留集合は二つある。見出し値を与える学習時評価には $1{,}000$ 窓，すなわち $112{,}000$ トークンを用いる。
+層別分析とシャッフル対照には $400$ 窓，すなわち $44{,}800$ トークンを用いる。各窓の長さは $112$ トークンである。
+評価集合が異なるため，層別分析の $32$ 層平均 $0.561/0.592$ は，見出し値 $0.559/0.590$ と厳密には一致しない。
+全層対応の適合 $R^2$ は，各層ペアに共通する $22{,}400$ 行を用い，同じ標本内で適合と評価を行う in-sample の
+リッジ線形プローブである。
+
+キメラの言語機能は三通りに評価する。第一に，英語プロンプトを原文どおり与え，温度 $0$ の決定的 argmax で生成例を得る。
+生成は最大 $40$ 新規トークンとし，EOS を出力した場合だけ早期終了する。第二に，ARC-Easy と SciQ の各選択肢について
+対数尤度を求め，最大の選択肢を答えとして正答率を測る。第三に，Alpaca と WikiText の次トークン交差エントロピーを測り，
+学習領域内と領域外の言語モデリング性能を比較する。
+
+\subsection{再現情報}\label{sec:repro}
+\begin{itemize}\setlength{\itemsep}{1pt}\raggedright
+\item \kw{モデル}：BlinkDL が配布した Raven 7B を Hugging Face 形式へ変換して fp16 で再保存したモデルと，
+fp16 の \texttt{allenai/open-instruct-pythia-6.9b-tulu}。ともに $32$ 層，$d{=}4096$，GPT-NeoX-20B トークナイザである。
+変換または再保存に用いた上流リビジョンは両親とも未記録である。配布成果物の
+\texttt{parent\_fingerprints.json} には，実際に学習へ用いたローカル親モデルの SHA-256 を収録する。
+\item \kw{アダプタ}：$d_z{=}d{=}4096$，内部幅 $4096$ の残差ブロック $1$，非アフィン LN，
+潜在整合の重み $\lambda{=}1$，ノイズ標準偏差 $\sigma{=}0.4$，$268.5$M パラメータ。残差ブロックの第 $2$ 行列はゼロ初期化する。AdamW と $4{\times}$V100 を用い，
+有効バッチは $4096$，学習率は $10^{-3}\!\to\!10^{-5}$ とした。保留集合の $A\!\to\!B$ が改善しなくなるたびに学習率を
+$0.5$ 倍した。乱数種 $0$ で $416{,}000$ 反復を走らせ，保留 $A\!\to\!B$ が最良となる $415{,}000$ 反復目を報告する。
+\item \kw{データ}：残差は Alpaca 学習分割の先頭側から，$112$ トークンの窓を用いて取得した。独立なトークン位置は約 $232$k である。評価窓は
+文字位置 $2{,}000{,}000$ 以降という，学習トークン数に依存しない固定オフセットから取り，両者は重ならない。標準化統計は各層の学習残差から
+算出し逆標準化に用いる。
+\item \kw{評価}：保留集合の $\Rsq$ は各層で全トークン・全次元をプールして算出し，$32$ 層の単純平均を報告する。多肢選択は各選択肢を連結した系列の
+対数尤度で決定する。総和スコアと，プロンプト以降のトークン数で割った平均スコアを求める。全評価集合を用い，
+その内訳は ARC-Easy test $2376$ 問と SciQ test $1000$ 問である。
+SciQ は support 文を与えない closed-book 形式で評価する。
+構成間の差は McNemar 検定と対応 bootstrap によるペア化検定で評価する。\PtoR{} の RWKV 後段では選択肢を常に batch $1$ で評価する。
+\PtoR{} も \RtoP{} と同じ，保留 $A\!\to\!B$ で選んだ step $415{,}000$ の配布チェックポイントに固定し，
+$B\!\to\!A$ または \PtoR{} QA を見たチェックポイントの再選択は行わない。ただし方向固定した二つの配布 runtime は，
+評価後に各経路の四境界について報告テスト平均が最大だった $L{=}4$ を既定値とし，独立な deployment-selection 分割はない。
+\item \kw{コード・構造化データ}：本研究のリポジトリは
+\href{https://github.com/Katagiri-Hoshino-Lab/NinaXander}{\url{https://github.com/Katagiri-Hoshino-Lab/NinaXander}}
+である。実験コード，各評価の生データと
+論文報告値の集約表，再現手順，および本文の数値を表データと自動照合する検査を含む。
+\item \kw{Hugging Face 配布物}：2026 年 7 月 30 日時点の推論用成果物を，次の三つの model repository
+へ保存した。
+\begin{itemize}\setlength{\itemsep}{0pt}\raggedright
+\item 共有アダプタ：\hfrepo
+  {https://huggingface.co/Katagiri-Hoshino-Lab/ninaxander-raven7b-tulu69-adapter}
+  {ninaxander-raven7b-tulu69-adapter}
+\item 既定値を $L{=}4$ とする \PtoR{}：\hfrepo
+  {https://huggingface.co/Katagiri-Hoshino-Lab/ninaxander-tulu69-to-raven7b-best}
+  {ninaxander-tulu69-to-raven7b-best}
+\item 既定値を $L{=}4$ とする \RtoP{}：\hfrepo
+  {https://huggingface.co/Katagiri-Hoshino-Lab/ninaxander-raven7b-to-tulu69-best}
+  {ninaxander-raven7b-to-tulu69-best}
+\end{itemize}
+各 repository は英語・日本語・簡体字中国語の model card と notice，SafeTensors，SHA-256 manifest を含む。
+配布 License はいずれも，より制約の強い親である Tulu-Pythia に合わせた AI2 AI Model License であり，
+用途を非商用研究に限定する。
+各 NOTICE に親モデルの帰属を記載する。
+\end{itemize}
 
 \section{結果}\label{sec:results}
-以下では，表現のレベルから下流の機能まで順に測る。\S\ref{sec:space} で対応層間の整合を，\S\ref{sec:ladder} で
-横断読み出しと自系統再構成の関係を，\S\ref{sec:linear} でアダプタの非線形性を扱い，\S\ref{sec:chimera} と
-\S\ref{sec:goal} で合成したキメラの生成・正答率・推論メモリを評価する。
+以下では，まず対応層間の表現が揃うかを調べ，その表現から各モデルの残差をどこまで復元できるかを測る。
+次にアダプタの非線形性を切り分け，最後に合成したキメラの生成，正答率，推論メモリを評価する。
 
 
 \subsection{対応層間には学習可能な共通表現がある}\label{sec:space}
-\S\ref{sec:method} の条件を満たす $7$B 指示追従モデルのペアを，指示形式テキスト（Alpaca~\cite{alpaca}）で整合させると，
-残差ブロック 1 個のアダプタが未学習の文章における中心化潜在相関 $\rho_{\mathrm{ctr}}\!=\!0.901$ に達する。本論文では中心化相関 $0.901$ と，各復号器が自系統の残差を再構成できること
-（$A\!\to\!A\ 0.70$，$B\!\to\!B\ 0.71$）を併せて，共通表現の根拠として主張する。また，各横断課題へ直接あてはめた
-最良の\emph{線形}写像だけでも $A\!\to\!B\ 0.487$，$B\!\to\!A\ 0.535$ に届く（\S\ref{sec:linear}）。したがって，観測された予測可能性の大部分は深い非線形写像の表現力だけでは説明できない。
-ただし\kw{同一層ペアが内在的に特別なわけではない}：アダプタを介さない生の残差どうしを全 $32{\times}32$ 層で比べると（図~\ref{fig:cka}），
-線形 CKA は総じて弱く（対角平均 $0.05$ 対 非対角平均 $0.03$），$A$ の層 $j$ が $B$ の層 $j$ に最も似るのは $32$ 行中
-$2$ 行にすぎない（最類似は層 $0$ が $14$ 行，最終層が $12$ 行を占める）。直接の線形回帰しやすさでも同一層は特別ではない：
-同じ全層ペアへ層別の線形写像をあてはめると，適合 $R^2$ は対角平均 $0.87$ 対 非対角平均 $0.84$ であり，
+同じトークナイザ，層数，隠れ幅を持つ二つの $7$B 指示追従モデルを，Alpaca~\cite{alpaca} の指示形式テキストで整合させると，
+残差ブロック 1 個のアダプタが未学習の文章における中心化潜在相関 $\rho_{\mathrm{ctr}}\!=\!0.901$ に達する。本論文では，
+中心化相関 $0.901$ に加え，各復号器が自系統の残差を $A\!\to\!A\ 0.70$，$B\!\to\!B\ 0.71$ で再構成できることを
+共通表現の根拠とする。また，各横断課題へ直接あてはめた最良の\emph{線形}写像だけでも $A\!\to\!B\ 0.487$，
+$B\!\to\!A\ 0.535$ に届く。この線形対照だけでも相当な値に達するため，観測された予測可能性の大部分は
+深い非線形写像の表現力だけでは説明できない。
+ただし，\kw{同一層ペアが内在的に特別なわけではない}。図~\ref{fig:cka}のように，アダプタを介さない生の残差どうしを
+全 $32{\times}32$ 層で比べると，線形 CKA は総じて弱く，対角平均は $0.05$，非対角平均は $0.03$ となる。
+$A$ の層 $j$ が $B$ の層 $j$ に最も似るのは $32$ 行中 $2$ 行にすぎない。最類似の列は層 $0$ が $14$ 行，最終層が
+$12$ 行を占める。直接の線形回帰しやすさでも同一層は特別ではない。
+同じ全層ペアへ層別の線形写像をあてはめると，適合 $R^2$ は $0.62$--$0.94$ とほぼ全ペアで高い。
+平均を比べると，適合 $R^2$ は対角平均 $0.87$ 対 非対角平均 $0.84$ であり，
 同番号層が最良となるのは $32$ 行中 $3$ 行にすぎない。ゆえに $\rho_{\mathrm{ctr}}\!=\!0.901$ は\emph{選んだ同一層ペア上で学習して
 回復した}整合であって，層番号どうしに固有の対応ではない。
 本論文は任意の層ペアに存在する回帰可能性の上に，同一層という選択をしたケーススタディであると位置づける。
 
-\begin{figure}[!htbp]\centering
-\includegraphics[width=\columnwidth]{fig_layer_cka}
-\caption{生残差の全 $32{\times}32$ 層対応。
-左：線形 CKA は総じて弱く，高い値は層 $0$ の行・列と最終層の角に集中する――対角（破線）は特別でない。
-右：同じ各ペアへ層別の線形写像をあてはめた適合 $R^2$ は $0.62$--$0.94$ とほぼ全ペアで高い。
-二つのパネルの色スケールは異なる。}
+\begin{figure*}[!t]\centering
+\includegraphics[width=\textwidth]{fig_layer_cka}
+\caption{生残差の全 $32{\times}32$ 層対応。左は線形 CKA，右は層別線形写像の適合 $R^2$ を示す。
+破線は同番号層であり，二つのパネルで色尺度が異なる。}
 \label{fig:cka}
-\end{figure}
-整合が\emph{学習可能}であることは確認できるが，
-その射程はこの意味でも限定的である（\S\ref{sec:discussion}）。
+\end{figure*}
+整合が\emph{学習可能}であることは確認できるが，同じ層番号が自然に対応していたとは言えない。
 
-以降の数値はすべて，同一構成の単一の学習から得たものである。潜在の幅は $z{=}d{=}4096$，$32$ ブロック
+以降の数値はすべて，同一構成の単一の学習から得たものである。潜在の幅は $d_z{=}d{=}4096$，$32$ ブロック
 すべてを対応付け，アダプタは $268.5$M パラメータ，$\sigma{=}0.4$，学習率は $10^{-3}$ から plateau 方式で下限 $10^{-5}$
-まで下げた。学習信号は Alpaca 学習分割の $2{,}075$ 窓（各 $112$ トークン，独立トークン位置 $\approx\!232$k）から取った残差で，
+まで下げた。学習信号は Alpaca 学習分割の $2{,}075$ 窓から取った残差である。各窓は $112$ トークンであり，
+独立なトークン位置は約 $232$k となる。これらの残差は
 $32$ 層で $7.44$M ペアを成し，このペア集合を約 $228$ 回反復した。報告値は，保留 $A\!\to\!B$ が最良となる
-最深点（$415{,}000$ 反復）のチェックポイントのものである。
+最深点，すなわち $415{,}000$ 反復目のチェックポイントから得た。
 \PtoR{} の系統横断写像は $B\!\to\!A\ 0.590$ で，わずかに
-$A\!\to\!B\ 0.559$ を上回る（RNN 側の残差の方が Transformer 潜在から復元しやすい）。両者とも自系統再構成
-（$A\!\to\!A\ 0.695$，$B\!\to\!B\ 0.711$）を下回っており，系統横断が整合ではなく復号で律速されることを裏づける。
+$A\!\to\!B\ 0.559$ を上回る。すなわち RNN 側の残差の方が Transformer 潜在から復元しやすい。両者とも，
+$A\!\to\!A\ 0.695$ と $B\!\to\!B\ 0.711$ という自系統再構成を下回る。高い潜在整合のもとでも
+自系統再構成の段階ですでに誤差が残り，系統横断の読み出しはそれをさらに下回る。この誤差が符号器・潜在の正規化・
+復号器・学習時ノイズのいずれに由来するかは切り分けていない。次節では，自己再構成と横断読み出しの差を比較する。
 これらの整合・読み出しがトークンごとの真の対応であって分布の重なりではないことは，負の対照で確かめた：$A$ の行順を保ったまま
 $B$ の残差行を単一の乱数置換で入れ替えて再対応させると，$\rho_{\mathrm{ctr}}$ は $0.901\!\to\!0.000$，
-$A\!\to\!B$ は $0.561\!\to\!-0.592$，$B\!\to\!A$ は $0.592\!\to\!-0.609$ へ崩壊する
-（自系統写像 $A\!\to\!A$，$B\!\to\!B$ は構成上不変）。すなわち両方向の読み出しとも，正しいトークン対応なしには得られない。
+$A\!\to\!B$ は $0.561\!\to\!-0.592$，$B\!\to\!A$ は $0.592\!\to\!-0.609$ へ崩壊する。
+自系統写像 $A\!\to\!A$，$B\!\to\!B$ は構成上変化しない。すなわち両方向の読み出しとも，正しいトークン対応なしには得られない。
 
-潜在のうちトークンごとに変動する成分の割合
-$f=\lVert z-\overline{z}\rVert^2/\lVert z\rVert^2$ を導入する。
-要素ごとの係数を持たない層正規化のもとで，生の相関は
-$\rho_{\mathrm{raw}}=(1-f)+f\,\rho_{\mathrm{ctr}}$，すなわち $\text{align}=2f(1-\rho_{\mathrm{ctr}})$ と分解される。ここで報告する $f$ は $A,B$ それぞれの変動割合の平均であり，この形が等式として成り立つのは両者が等しく，
-かつ両者の共通モードが平行な場合である。実測では，学習が進んだ後の評価点でこの関係は $3\!\times\!10^{-4}$ 程度の
-精度で成り立つ。ただし学習初期には成り立たず，$0$ 反復目では残差が $6.6\!\times\!10^{-2}$ に達する。等式が示すのは生の相関が中心化された相関と定数項の影響を含むということである。そのうち $1-f$ の割合は，情報を持たない定数項として与えられる。最深点の $f$ は $0.350$ であるから，
+以下では，$z$ は $z_A$ または $z_B$ を表し，$\overline z$ はその層内で求めた次元別トークン平均を表す。
+$\rho_{\mathrm{raw}}$ はこのトークン平均を引く前の $z_A,z_B$ の Pearson 相関である。$\mathrm{align}$ は式~\eqref{eq:adapter-objective} の第 $3$ 誤差項に対応する
+$z_A,z_B$ 間の平均二乗距離であり，重み $\lambda$ は含めない。潜在のうちトークンごとに変動する成分の割合 $f$ を使うと，要素ごとの係数を持たない層正規化のもとで，
+生の相関と中心化相関の関係を次のように分解できる。
+\begin{equation}\label{eq:common-mode}
+\begin{aligned}
+f &= \frac{\lVert z-\overline z\rVert^2}{\lVert z\rVert^2},\\
+\rho_{\mathrm{raw}} &= (1-f)+f\,\rho_{\mathrm{ctr}},\\
+\mathrm{align} &= 2f(1-\rho_{\mathrm{ctr}}).
+\end{aligned}
+\end{equation}
+ここで報告する $f$ は $A,B$ それぞれの変動割合の平均である。式~\eqref{eq:common-mode} が等式として成り立つには，
+両者の変動割合が等しく，共通モードが平行でなければならない。実測では，学習が進んだ後の評価点でこの関係は
+$3\!\times\!10^{-4}$ 程度の精度で成り立つ。ただし学習初期には成り立たず，$0$ 反復目では残差が
+$6.6\!\times\!10^{-2}$ に達する。式~\eqref{eq:common-mode} が示すのは，生の相関が中心化相関と定数項の影響を
+ともに含むということである。そのうち $1-f$ の割合は，情報を持たない定数項として与えられる。最深点の $f$ は $0.350$ であるから，
 \kw{潜在の持つエネルギーの $65\%$ はトークンに依存しない定数}であり，生の相関はその定数に支配される。実際，中心化した
-$\rho_{\mathrm{ctr}}$ が $0.901$ であるのに対し生の相関は $0.965$ を示し，等式はこれを
+$\rho_{\mathrm{ctr}}$ が $0.901$ であるのに対し生の相関は $0.965$ を示し，式~\eqref{eq:common-mode} はこれを
 $(1{-}0.350)+0.350\times0.901=0.965$ と過不足なく再現する。
 
 \paragraph{$f$ が示すこと，示さないこと}$f$ は二次モーメントであって情報量ではなく，そこから引ける推論は一方向に
 限られる。$f\!\to\!0$ は潜在が定数に崩壊したことを証明し，したがってトークンごとの情報を一切持たないことを示す。$f$ が大きいことが意味するのは，トークンごとの潜在が角度方向に散らばっていることだけであり，
 係数を持たない層正規化のもとで $f$ は倍率に対して厳密に不変である。散らばりは意味のある変動からも無意味な変動からも等しく生じる。
 変動する成分が情報を担っていると言えるのは，$f$ ではなく読み出しの側である。読み出しは中心化 $\Rsq$ であり，
-トークンに依存しない予測器は $0$ を超えられない（最良の定数がちょうど $0$ 点）。ゆえに $B\!\to\!B=0.711$ は
+トークンに依存しない予測器は $0$ を超えられず，最良の定数がちょうど $0$ 点となる。ゆえに $B\!\to\!B=0.711$ は
 いかなる定数からも得られず，潜在のエネルギーの $65\%$ が定数であることと矛盾しない。
 
-\subsection{両横断読み出しは自系統再構成に制約される}\label{sec:ladder}
+\subsection{両横断読み出しは全層で自系統再構成を下回る}\label{sec:ladder}
 測定した五つの診断値を図~\ref{fig:ladder} に示す。
 \[
  \begin{array}{ll}
@@ -322,30 +505,30 @@ $(1{-}0.350)+0.350\times0.901=0.965$ と過不足なく再現する。
 $\rho_{\mathrm{ctr}}$ は相関係数，後四者は決定係数であり，両者を同じ尺度の量として比較することはできない。
 本節の結論は，$\Rsq$ 同士では全 $32$ 層で
 $A\!\to\!B\le B\!\to\!B$ かつ $B\!\to\!A\le A\!\to\!A$ であること，および
-\S\ref{sec:goal} の自己符号器対照で復号のみの損失が下流性能にも現れることに基づく。
+後述する自系統再構成対照で，符号化と復号の往復による損失が下流性能にも現れることに基づく。
+この損失は，\Pythiaself{} では全切替層の両課題で，\RWKVself{} では $L{=}16,24$ の両課題で有意となる。
 
 \begin{figure*}[!t]\centering
 \begin{tikzpicture}[
-  font=\footnotesize, >={Stealth[length=2mm]},
+  font=\small, >={Stealth[length=2mm]},
   diag/.style={draw,rounded corners=2pt,minimum width=35mm,minimum height=15mm,align=center}]
   \node[diag,fill=green!18,minimum height=33mm] (align) {潜在整合\\$\rho_{\mathrm{ctr}}=0.901$};
   \node[diag,fill=orange!16,right=15mm of align,yshift=9mm] (selfb)
     {$B$ 自系統再構成\\$\Rsq(B\!\to\!B)=0.711$};
-  \node[diag,fill=orange!34,right=21mm of selfb] (crossab)
+  \node[diag,fill=orange!34,right=25mm of selfb] (crossab)
     {\RtoP{} 横断読み出し\\$\Rsq(A\!\to\!B)=0.559$};
   \node[diag,fill=blue!14,right=15mm of align,yshift=-9mm] (selfa)
     {$A$ 自系統再構成\\$\Rsq(A\!\to\!A)=0.695$};
-  \node[diag,fill=blue!30,right=21mm of selfa] (crossba)
+  \node[diag,fill=blue!30,right=25mm of selfa] (crossba)
     {\PtoR{} 横断読み出し\\$\Rsq(B\!\to\!A)=0.590$};
-  \draw[->,thick] (align.east)--node[above,font=\scriptsize]{復号} (selfb.west);
-  \draw[->,thick] (align.east)--node[below,font=\scriptsize]{復号} (selfa.west);
-  \draw[->,thick] (selfb)--node[midway,fill=white,inner sep=1pt,font=\tiny,align=center]
+  \draw[->,thick] (align.east)--node[above,sloped]{再構成} (selfb.west);
+  \draw[->,thick] (align.east)--node[below,sloped]{再構成} (selfa.west);
+  \draw[->,thick] (selfb)--node[midway,fill=white,inner sep=1pt,align=center]
     {入力分布\\のずれ} (crossab);
-  \draw[->,thick] (selfa)--node[midway,fill=white,inner sep=1pt,font=\tiny,align=center]
+  \draw[->,thick] (selfa)--node[midway,fill=white,inner sep=1pt,align=center]
     {入力分布\\のずれ} (crossba);
 \end{tikzpicture}
-\caption{共有潜在から両方向の読み出し遷移。橙は復号器 $D_B$ を，青は $D_A$ を通る経路であり，同色の二つは同じ復号器を共有する。高い中心化相関と不完全な自己再構成が共存し，
-\RtoP{}／\PtoR{} の横断読み出しは，それぞれ同じ復号器を使う \Pythiaself{}／\RWKVself{} を全層で下回る。}
+\caption{共有潜在から四つの読み出しへの遷移。同色の経路は同じ復号器を共有する。}
 \label{fig:ladder}
 \end{figure*}
 高い潜在相関は，高い再構成精度を保証しない。\RtoP{} は同一の復号器 $D_B$ を通る \Pythiaself{} と，
@@ -353,16 +536,16 @@ $A\!\to\!B\le B\!\to\!B$ かつ $B\!\to\!A\le A\!\to\!A$ であること，お�
 両不等式は経験的な観測であって定理ではないが，いずれの方向でも自己再構成の段階ですでに相当の誤差があり，
 系統横断だけを改善してもその誤差は残る。
 
-$z{=}d{=}4096$ では合成写像 $D\!\circ\!E$ は恒等写像を表現でき，階数による制約は存在しない。それでも $B\!\to\!B$ は $0.711$ に留まる。これがノイズ $\sigma$ が定める天井なのかは不明であり， 何が律速となっているかは未解決問題として残っている。
+$d_z{=}d{=}4096$ では潜在の幅が残差の幅に等しく，非アフィン LN が落とすのもトークンごとの平均とノルムの二自由度にすぎないため，幅や階数が再構成を強く制約するとは考えにくい。それでも $B\!\to\!B$ は $0.711$ に留まる。これがノイズ $\sigma$ が定める天井なのかは不明であり，何が律速となっているかは未解決問題として残っている。
 
 \subsection{アダプタは両横断経路で非線形である}\label{sec:linear}
-アダプタは 2 つの線形写像に挟まれたゼロ初期化の残差ブロック 1 個であり，$E$ と $D$ は線形写像から学習を始める。だがそれは
+アダプタの $E$ と $D$ はそれぞれ 2 つの線形写像に挟まれたゼロ初期化の残差ブロック 1 個であり，いずれも線形写像から学習を始める。だがそれは
 学習前の性質であって，$415{,}000$ 反復後の性質ではない。最深点のアダプタが実際どれだけ線形かを，
 \RtoP{}／\PtoR{} とも同じ代表 $5$ 層，同じあてはめ行・保留行で測った。
 
 アダプタ自身の出力を模倣する最良のアフィン写像が説明する出力分散は，
-\RtoP{} で $86.6\%$，\PtoR{} で $88.0\%$ である。したがって\kw{残る $13.4\%$／$12.0\%$ は
-は，適合したアフィン写像では捉えられない}。学習後の写像は両経路で明確に非線形である。
+\RtoP{} で $86.6\%$，\PtoR{} で $88.0\%$ である。したがって\kw{残る $13.4\%$／$12.0\%$ は，
+適合したアフィン写像では捉えられない}。学習後の写像は両経路で明確に非線形である。
 
 比較対象はアダプタを近似したものではなく，層ごとに各経路の標準化した
 入力残差から標準化した出力残差への最良のアフィン写像を，リッジ付き最小二乗で別々に\emph{直接}あてはめた対照である。代表 $5$ 層 $\{4,10,16,22,28\}$ の保留行で評価すると，
@@ -371,13 +554,32 @@ $z{=}d{=}4096$ では合成写像 $D\!\circ\!E$ は恒等写像を表現でき�
 系統横断予測ができるため，\emph{共有表現の主張はこの線形到達性で担保される}。
 
 \emph{別途適合したアフィン対照。}この対照は切替層ごとに，Alpaca のうちアダプタの学習に用いていない保留領域から
-取った $40{,}096$ 行の標準化残差へ，切片つきリッジ回帰（$10^{-3}$）で適合したものである。表~\ref{tab:bench} では，\RtoP{} のアダプタを直接アフィン写像へ置き換えると
+取った $40{,}096$ 行の標準化残差へ，正則化係数 $10^{-3}$ の切片つきリッジ回帰で適合したものである。表~\ref{tab:bench} では，\RtoP{} のアダプタを直接アフィン写像へ置き換えると
 正答率が $8$--$23$ 点崩れる。一方 \PtoR{} では差が小さく，SciQ @8 ではアフィン対照の方が $3.4$ 点高い。
 これは経路差として重要だが，二つの写像は学習目的・データ・正則化が異なるため，非線形性の因果効果とはみなさない。
 
-\emph{交絡を抑えた介入：同一アダプタの MLP 枝を無効化する。}そこで，\kw{同一の学習済みアダプタ}の
-残差ブロック（唯一の学習非線形性 $\mathrm{fc}_2(\mathrm{GELU}(\mathrm{fc}_1(\cdot)))$）だけを係数 $\alpha$ で
-スケールする（$\alpha{=}1$ 完全，$\alpha{=}0$ は\emph{枝を外した同一写像}）。
+\begin{table*}[!t]\centering\small
+\caption{学習済みアダプタと，各経路へ直接適合したアフィン対照の長さ正規化正答率。単位は百分率であり，
+同じ問題・切替層・後段を用いる。}\label{tab:bench}
+\setlength{\tabcolsep}{2.8pt}
+\begin{tabular}{rcccccccc}\toprule
+& \multicolumn{4}{c}{ARC-Easy} & \multicolumn{4}{c}{SciQ}\\
+\cmidrule(lr){2-5}\cmidrule(lr){6-9}
+& \multicolumn{2}{c}{\RtoP{}} & \multicolumn{2}{c}{\PtoR{}}
+& \multicolumn{2}{c}{\RtoP{}} & \multicolumn{2}{c}{\PtoR{}}\\
+$L$ & adapter & affine & adapter & affine
+& adapter & affine & adapter & affine\\\midrule
+4  & 59.6 & 41.9 & 62.2 & 60.2 & 70.9 & 47.5 & 69.2 & 69.6\\
+8  & 59.0 & 43.1 & 57.3 & 56.0 & 67.7 & 49.1 & 64.6 & 68.0\\
+16 & 48.6 & 34.8 & 57.5 & 57.5 & 54.5 & 35.9 & 68.0 & 69.6\\
+24 & 47.0 & 39.4 & 59.6 & 59.2 & 51.1 & 42.7 & 69.9 & 68.2\\\bottomrule
+\end{tabular}
+\end{table*}
+
+\emph{交絡を抑えた介入：同一アダプタの MLP 枝を無効化する。}そこで，\kw{同一の学習済みアダプタ}に含まれる
+残差ブロックだけを係数 $\alpha$ でスケールする。このブロックは，
+$\mathrm{fc}_2(\mathrm{GELU}(\mathrm{fc}_1(\cdot)))$ という唯一の学習非線形性を与える。$\alpha{=}1$ は完全な写像，
+$\alpha{=}0$ は\emph{枝を外した同一写像}を表す。
 表現 $R^2$ の $\alpha=0,.25,.5,.75,1$ 掃引は，\RtoP{} で
 $-0.41,-0.75,0.35,0.52,0.56$，\PtoR{} で $-0.30,-0.66,0.36,0.53,0.58$ となる。
 両経路で枝を外すと負の $R^2$ まで崩れ，しかも非単調である。二つの線形層は残差ブロックと協調して
@@ -385,12 +587,10 @@ $-0.41,-0.75,0.35,0.52,0.56$，\PtoR{} で $-0.30,-0.66,0.36,0.53,0.58$ とな�
 これは学習済み写像の性質であって，本論文が同目的で学習した線形アダプタとの比較は行っていないことに注意が必要である。多肢選択でも同じ $\alpha=0/1$ を
 同一問題上でペア化して評価する。
 
-\begin{table}[!htbp]\centering\scriptsize
-\caption{同一アダプタの非線形枝を無効化したときの長さ正規化正答率（\%）。
-各セルは $\alpha:1\!\to\!0$（完全な学習済み写像 $\to$ 同じ写像から枝のみ除去）を表す。
-ARC-Easy $2376$，SciQ $1000$，当て推量 $25\%$。}\label{tab:mlp-intervention}
+\begin{table*}[!t]\centering\small
+\caption{同一アダプタの非線形枝を無効化したときの長さ正規化正答率。単位は百分率であり，各セルは
+完全な写像から枝だけを除いた変化 $\alpha:1\!\to\!0$ を示す。}\label{tab:mlp-intervention}
 \setlength{\tabcolsep}{4.2pt}
-\resizebox{\columnwidth}{!}{%
 \begin{tabular}{rcccc}\toprule
 & \multicolumn{2}{c}{ARC-Easy} & \multicolumn{2}{c}{SciQ}\\
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}
@@ -399,29 +599,32 @@ $L$ & \RtoP{} & \PtoR{} & \RtoP{} & \PtoR{}\\\midrule
 8  & $59.0\!\to\!29.9$ & $57.3\!\to\!35.5$ & $67.7\!\to\!31.4$ & $64.6\!\to\!37.0$\\
 16 & $48.6\!\to\!28.5$ & $57.5\!\to\!43.7$ & $54.5\!\to\!31.7$ & $68.0\!\to\!47.3$\\
 24 & $47.0\!\to\!34.8$ & $59.6\!\to\!48.4$ & $51.1\!\to\!40.0$ & $69.9\!\to\!49.1$\\\bottomrule
-\end{tabular}}
-\end{table}
+\end{tabular}
+\end{table*}
 
 表~\ref{tab:mlp-intervention} の枝効果は \RtoP{} で $+11.1$--$+39.6$ 点，\PtoR{} で
 $+11.2$--$+36.6$ 点であり，$16$ 比較すべてで同一問題上の McNemar 正確検定
-$p<2{\times}10^{-9}$ となる。したがって，非線形枝の必要性は一方の経路から推測したものではなく，
-\RtoP{}／\PtoR{} の両方の表現と下流精度で直接確認される。
+$p<2{\times}10^{-9}$ となる。したがって，この学習済みアダプタから非線形枝を外すと，
+\RtoP{}／\PtoR{} の両方で表現と下流精度がともに崩れることが直接確認される。ただしこれは同時に学習された写像から
+枝だけを除いた場合の性質であり，非線形性が系統間の接続に一般に必要であることは示さない。少なくとも
+\PtoR{} の正答率では，別途適合したアフィン対照とアダプタの差は小さく，$8$ セルで $-3.4$〜$+2.0$ 点に収まる。
+表~\ref{tab:bench}が示すように，アダプタが一貫して上回るわけではない。
 
 \subsection{構文的に妥当な生成は得られるが事実性は劣化する}\label{sec:chimera}
-ここで実際に $7$B で両横断経路を合成する。切替層 $L$ では，前段親をブロック $0$ から $L$ まで走らせ
-（合計 $L{+}1$ ブロック），その残差を \S\ref{sec:method} の境界式で\emph{一度}だけ他方の空間へ翻訳し，
-後段親のブロック $L{+}1$ 以降と言語モデルヘッドを走らせる――ブロックごとの往復ではない。
+ここで実際に $7$B で両横断経路を合成する。切替層 $L$ では，前段親をブロック $0$ から $L$ まで，合計 $L{+}1$ ブロック走らせる。
+その残差を式~\eqref{eq:boundary}で\emph{一度}だけ他方の空間へ翻訳し，後段親のブロック $L{+}1$ 以降と
+言語モデルヘッドを走らせる。ブロックごとに往復する構成ではない。
 したがって \RtoPL{16} は RWKV $17$ ブロックと Pythia $15$ ブロック，\PtoRL{16} はその反対で，いずれも厳密な半分ではない。
 
 \begin{figure*}[!t]\centering
 \begin{tikzpicture}[
-  font=\scriptsize, >={Stealth[length=2mm]},
+  font=\small, >={Stealth[length=2mm]},
   a/.style={draw,rounded corners=1pt,minimum height=7mm,minimum width=6mm,fill=blue!12},
   b/.style={draw,rounded corners=1pt,minimum height=7mm,minimum width=6mm,fill=orange!14},
   hd/.style={draw,rounded corners=1pt,minimum height=7mm,minimum width=8mm,fill=gray!12},
   tr/.style={draw,rounded corners=2pt,minimum height=10mm,minimum width=13mm,fill=green!14,align=center}]
 % \RtoP{} row
-\node[font=\bfseries] (labAB) {\RtoP{}};
+\node[font=\small\bfseries] (labAB) {\RtoP{}};
 \node[right=3mm of labAB] (idsAB) {ids};
 \node[a,right=3mm of idsAB] (a0) {$A_0$};
 \node[right=1.5mm of a0] (ad) {$\cdots$};
@@ -435,7 +638,7 @@ $p<2{\times}10^{-9}$ となる。したがって，非線形枝の必要性は�
 \draw[->] (idsAB)--(a0);
 \foreach \x/\y in {a0/ad,ad/aL,aL/tab,tab/bN,bN/bd,bd/b31,b31/hb,hb/outAB} \draw[->] (\x)--(\y);
 % \PtoR{} row, aligned by role with \RtoP{}
-\node[font=\bfseries,below=12mm of labAB] (labBA) {\PtoR{}};
+\node[font=\small\bfseries,below=12mm of labAB] (labBA) {\PtoR{}};
 \node[right=3mm of labBA] (idsBA) {ids};
 \node[b,right=3mm of idsBA] (bb0) {$B_0$};
 \node[right=1.5mm of bb0] (bbd) {$\cdots$};
@@ -448,33 +651,31 @@ $p<2{\times}10^{-9}$ となる。したがって，非線形枝の必要性は�
 \node[right=2.5mm of ha] (outBA) {logits};
 \draw[->] (idsBA)--(bb0);
 \foreach \x/\y in {bb0/bbd,bbd/bbL,bbL/tba,tba/aaN,aaN/aad,aad/aa31,aa31/ha,ha/outBA} \draw[->] (\x)--(\y);
-\node[font=\tiny,above=3mm of tab,align=center] {
-  \textcolor{blue!55!black}{$A=$ RWKV（KV 不要）}\qquad
-  \textcolor{orange!65!black}{$B=$ Pythia（KV 要）}
+\node[above=3mm of tab,align=center] {
+  \textcolor{blue!55!black}{$A=$ RWKV，KV 不要}\qquad
+  \textcolor{orange!65!black}{$B=$ Pythia，KV 要}
 };
 \end{tikzpicture}
-\caption{\RtoP{}／\PtoR{} キメラの対称な構成。図中左側の親をブロック $L$ まで実行し，残差を一度だけ翻訳して，
-右側の親のブロック $L{+}1$ 以降とヘッドへ渡す。青は RWKV-Raven，橙は Tulu-Pythia。
-したがって Transformer 層数は \RtoP{} で $31{-}L$，\PtoR{} で $L{+}1$ となる。}
+\caption{\RtoP{}／\PtoR{} キメラの構成。前段をブロック $L$ まで実行して残差を一度翻訳し，後段を
+ブロック $L{+}1$ から実行する。}
 \label{fig:chimera}
 \end{figure*}
 
 最深点の同一アダプタを \RtoP{}／\PtoR{} とも $L{=}4$ に挿入し，同じ四つの英語プロンプトを
 温度 $0$，最大 $40$ 新規トークンで貪欲復号した。$L{=}4$ は，二課題平均が各横断方向の四境界中で最大であり，
-SciQ の KV--精度平面でも両方向が非支配集合に入る共通境界である（図~\ref{fig:tradeoff}）。
+SciQ の KV--精度平面でも両方向が非支配集合に入る共通境界である。図~\ref{fig:tradeoff}にこの関係を示す。
 ただしこれは同じ報告タスクを見た後の代表点選択であり，独立な生成用選択基準ではない。
 本比較は網羅的な生成ベンチマークではないが，両モデルの元モデル及びキメラモデルの出力を同条件で観察する。
 
-\begin{table*}[!t]\centering\footnotesize
+\begin{table*}[!t]\centering\small
 \setlength{\tabcolsep}{4pt}
-\caption{最深点アダプタの \RtoP{}／\PtoR{} による生成結果（ともに $L{=}4$）と，両親 pure Pythia／pure RWKV の
-同一プロンプト出力。英語原文をそのまま入力し，temperature $0$ の argmax，最大 $40$ 新規トークン，EOS のみ早期終了とした。
-四つのプロンプトに限る定性的比較であり，生成品質の定量評価ではない。}\label{tab:generation}
-\begin{tabular}{|p{0.145\linewidth}|p{0.18\linewidth}|p{0.19\linewidth}|p{0.16\linewidth}|p{0.19\linewidth}|}\hline
+\caption{両親と $L{=}4$ の \RtoP{}／\PtoR{} による同一プロンプトへの生成例。temperature $0$ の argmax，
+最大 $40$ 新規トークン，EOS のみ早期終了とした。}\label{tab:generation}
+\begin{tabular}{|P{0.17\linewidth}|P{0.18\linewidth}|P{0.19\linewidth}|P{0.17\linewidth}|P{0.19\linewidth}|}\hline
 Prompt (verbatim) & pure Pythia &
-\RtoP{}\par{\scriptsize 横断読み出し $R^2{=}0.559$} &
+\RtoP{}\par{横断読み出し $R^2{=}0.559$} &
 pure RWKV &
-\PtoR{}\par{\scriptsize 横断読み出し $R^2{=}0.590$}\\\hline
+\PtoR{}\par{横断読み出し $R^2{=}0.590$}\\\hline
 {\ttfamily \#\#\# Instruction:\par
 What is the capital of France?\par\smallskip
 \#\#\# Response:} &
@@ -482,12 +683,12 @@ What is the capital of France?\par\smallskip
 ``Paris.'' & \textbf{``Paris.''} \checkmark\\\hline
 {\ttfamily The three primary colors are} &
 ``red, yellow, and blue. These colors are often used in combination to create a wide variety of colors.'' & \textbf{``red, yellow, and blue.''} \checkmark &
-``red, blue, and yellow.'' と正答後，赤の反対色（緑）を問う Q\&A へ逸脱 &
+``red, blue, and yellow.'' と正答後，赤の反対色である緑を問う Q\&A へ逸脱 &
 ``red, blue, and yellow.'' と正答後，Bob/Alice の緑についての対話へ逸脱\\\hline
 {\ttfamily Question: Water is made of hydrogen and\par Answer:} &
 ``Hydrogen is made of hydrogen and oxygen.'' &
-``Hydrogen.'' \textbf{（誤り）} &
-``hydrogen.'' \textbf{（誤り）} & ``hydrogen.'' \textbf{（誤り）}\\\hline
+``Hydrogen.'' \textbf{誤り} &
+``hydrogen.'' \textbf{誤り} & ``hydrogen.'' \textbf{誤り}\\\hline
 {\ttfamily \#\#\# Instruction:\par
 Explain what a black hole is in one sentence.\par\smallskip
 \#\#\# Response:} &
@@ -495,7 +696,7 @@ Explain what a black hole is in one sentence.\par\smallskip
 ``A black hole is a region in space where gravity is so strong that nothing, not even light, can escape its pull.'' \checkmark &
 ``A black hole is a region of space where the gravitational pull is so strong that nothing, not even light, can escape.'' &
 ``A black hole is a type of celestial object that is formed when a star collapses and collapses into a black hole.''
-\emph{（循環的）}\\\hline
+\emph{循環的}\\\hline
 \end{tabular}
 \end{table*}
 
@@ -507,84 +708,63 @@ Explain what a black hole is in one sentence.\par\smallskip
 
 \subsection{親モデルとの機能・推論メモリ比較}\label{sec:goal}
 NinaXander の実用上の価値を評価するには，内部表現の指標だけでなく，凍結した両親との機能比較が必要である。
-ここでは，(i) 強い親モデルに対してどこまで性能を保てるか，(ii) 弱い親を上回るか，(iii) その代わりにどの程度 KV キャッシュを削減できるかを測る。
+ここでは三点を測る。第一は強い親モデルに対してどこまで性能を保てるか，第二は弱い親を上回るか，第三はその代わりに
+どの程度 KV キャッシュを削減できるかである。
 
 この比較は，各選択肢の対数尤度を求めて最大のものを選ぶ多肢選択形式で行う。生成も文字列の照合も主観的な判定も
-介在しないため，結果は一意に定まる。用いたのは\kw{全評価集合}（ARC-Easy~\cite{clark2018thinksolvedquestionanswering} test $2376$，SciQ~\cite{welbl-etal-2017-crowdsourcing} test $1000$），最深点
-（$415{,}000$ 反復）の $z{=}4096$ のアダプタ，そして四つの切替位置である。同一問題集合上の構成間比較はペア化データなので，
-差はセルごとの独立な二項 SE ではなく\kw{ペア化検定}（McNemar の正確検定と対応 bootstrap）で評価する。選択肢は長さが
+介在しないため，結果は一意に定まる。\kw{全評価集合}として，ARC-Easy~\cite{clark2018thinksolvedquestionanswering} test $2376$ 問と
+SciQ~\cite{welbl-etal-2017-crowdsourcing} test $1000$ 問を用いる。アダプタは $d_z{=}4096$ の最深点，すなわち
+$415{,}000$ 反復目であり，四つの切替位置を評価する。同一問題集合上の構成間比較はペア化データなので，
+差はセルごとの独立な二項 SE ではなく，McNemar の正確検定と対応 bootstrap による\kw{ペア化検定}で評価する。選択肢は長さが
 異なり総和／長さ正規化で順位が食い違い得るので両方を構造化データに保存し，本文は長さ正規化を報告・検定に用いる。
-また SciQ は付属の support 文を与えない closed-book 形式（Question／Answer のみ）で評価するため，本稿の SciQ 値は
+また SciQ は付属の support 文を与えず，Question と Answer だけからなる closed-book 形式で評価するため，本稿の SciQ 値は
 support を与える標準プロトコルの公表値と直接比較できない。
 
-\begin{table}[!htbp]\centering\scriptsize
-\caption{\RtoP{}／\PtoR{} の学習済みアダプタと，各経路の入力・出力残差へ別々に適合した最良アフィン対照による
-長さ正規化多肢選択正答率（\%，ARC-Easy $2376$，SciQ $1000$，当て推量 $25$）。
-各値は同じ問題，同じ切替層，同じ後段実行を用いる。}\label{tab:bench}
-\setlength{\tabcolsep}{2.8pt}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{rcccccccc}\toprule
-& \multicolumn{4}{c}{ARC-Easy} & \multicolumn{4}{c}{SciQ}\\
-\cmidrule(lr){2-5}\cmidrule(lr){6-9}
-& \multicolumn{2}{c}{\RtoP{}} & \multicolumn{2}{c}{\PtoR{}}
-& \multicolumn{2}{c}{\RtoP{}} & \multicolumn{2}{c}{\PtoR{}}\\
-$L$ & adapter & affine & adapter & affine
-& adapter & affine & adapter & affine\\\midrule
-4  & 59.6 & 41.9 & 62.2 & 60.2 & 70.9 & 47.5 & 69.2 & 69.6\\
-8  & 59.0 & 43.1 & 57.3 & 56.0 & 67.7 & 49.1 & 64.6 & 68.0\\
-16 & 48.6 & 34.8 & 57.5 & 57.5 & 54.5 & 35.9 & 68.0 & 69.6\\
-24 & 47.0 & 39.4 & 59.6 & 59.2 & 51.1 & 42.7 & 69.9 & 68.2\\\bottomrule
-\end{tabular}}
-\end{table}
-
-\begin{table}[!htbp]\centering\scriptsize
-\caption{4 経路の長さ正規化正答率（\%）。
-\RWKVself{}／\Pythiaself{} は自系統再構成対照，\RtoP{}／\PtoR{} は系統横断キメラ。
-同じ問題・切替層の二つの横断経路差はペア化して検定した。}
+\begin{table*}[!t]\centering\small
+\caption{4 経路の長さ正規化正答率。単位は百分率であり，各行・各課題の最大値を太字で示す。}
 \label{tab:direction}
 \setlength{\tabcolsep}{3.2pt}
-\resizebox{\columnwidth}{!}{%
 \begin{tabular}{rcccccccc}\toprule
 & \multicolumn{2}{c}{\RWKVself{}} & \multicolumn{2}{c}{\RtoP{}}
 & \multicolumn{2}{c}{\Pythiaself{}} & \multicolumn{2}{c}{\PtoR{}}\\
 $L$ & ARC & SciQ & ARC & SciQ & ARC & SciQ & ARC & SciQ\\\midrule
-4  & 62.8 & 68.5 & 59.6 & 70.9 & 62.2 & \textbf{74.8} & \textbf{62.2} & 69.2\\
-8  & 59.8 & 66.7 & 59.0 & 67.7 & 62.7 & \textbf{74.8} & 57.3 & 64.6\\
+4  & \textbf{62.8} & 68.5 & 59.6 & 70.9 & 62.2 & \textbf{74.8} & 62.2 & 69.2\\
+8  & 59.8 & 66.7 & 59.0 & 67.7 & \textbf{62.7} & \textbf{74.8} & 57.3 & 64.6\\
 16 & 54.8 & 59.8 & 48.6 & 54.5 & 57.4 & \textbf{71.1} & \textbf{57.5} & 68.0\\
 24 & 52.2 & 57.9 & 47.0 & 51.1 & 59.4 & \textbf{70.1} & \textbf{59.6} & 69.9\\\bottomrule
-\end{tabular}}
-\end{table}
+\end{tabular}
+\end{table*}
 
-四経路の同時比較から六つのことが読み取れる。\emph{(a)} \kw{$7$B の半分が外来であっても，\RtoP{}／\PtoR{} とも実際に問いへ答えられる}。全横断構成が当て推量を大きく上回り，SciQ では \RtoP{} $70.9\%$，\PtoR{} $69.9\%$ に達する。
-\emph{(b)} \kw{深さ効果は経路依存}である。\RtoP{} は $L=4\to24$ で SciQ
+四経路の同時比較から六つのことが読み取れる。第一に，\kw{前段と後段が異なる系統であっても，\RtoP{}／\PtoR{} とも実際に問いへ答えられる}。全横断構成が当て推量を大きく上回り，SciQ では \RtoP{} $70.9\%$，\PtoR{} $69.9\%$ に達する。
+第二に，\kw{深さ効果は経路依存}である。\RtoP{} は $L=4\to24$ で SciQ
 $70.9\to67.7\to54.5\to51.1$，ARC-Easy $59.6\to59.0\to48.6\to47.0$ と単調に下がるが，
 \PtoR{} は SciQ $69.2\to64.6\to68.0\to69.9$，ARC-Easy $62.2\to57.3\to57.5\to59.6$ と非単調である。
 局所読み出しは同じ四層で \RtoP{} $0.570/0.555/0.575/0.567$，\PtoR{} $0.552/0.517/0.604/0.608$ であり，
 接続する層や $R^2$ だけから順位は決定できない。
-\emph{(c)} \kw{強いほうの親はどちらの経路でも超えられない}。全 $8$ 横断構成が両タスクで Tulu-Pythia を下回り，
+第三に，\kw{強いほうの親はどちらの経路でも超えられない}。全 $8$ 横断構成が両タスクで Tulu-Pythia を下回り，
 各同一問題の McNemar 検定でも有意である。
-\emph{(d)} \kw{RWKV に対する差も経路・課題依存}である。\RtoPL{4} は SciQ で RWKV を $+3.9$ 点
-（$p{=}0.018$）上回る一方，ARC-Easy では $-2.2$ 点（$p{=}0.042$）である。ただし総和スコアではこの優位は消える
-（\RtoPL{4} は SciQ $-2.7$ 点，\PtoRL{4} は ARC $-4.6$ 点／SciQ $-5.7$ 点）――弱い親に対する優劣の判定は
-長さ正規化の選択に依存する。\PtoR{} はいずれの境界も RWKV を
-有意に上回らず，\PtoRL{4} は ARC $+0.4$ 点（$p{=}0.66$），SciQ $+2.2$ 点（$p{=}0.14$）で統計的に同等である。
-\emph{(e)} \kw{別途適合したアフィン対照の差も経路依存}である。\RtoP{} ではアダプタが全セルで $8$--$23$ 点高いが，
+第四に，\kw{RWKV に対する差も経路・課題依存}である。\RtoPL{4} は SciQ で RWKV を $+3.9$ 点上回り，$p{=}0.018$ となる一方，
+ARC-Easy では $-2.2$ 点，$p{=}0.042$ となる。ただし総和スコアではこの優位は消える。総和スコアにおける \RtoPL{4} は
+SciQ $-2.7$ 点であり，\PtoRL{4} は ARC $-4.6$ 点，SciQ $-5.7$ 点である。したがって，弱い親に対する優劣の判定は
+長さ正規化の選択に依存する。\PtoR{} はいずれの境界も RWKV を有意に上回らない。\PtoRL{4} は ARC $+0.4$ 点で
+$p{=}0.66$，SciQ $+2.2$ 点で $p{=}0.14$ となり，統計的に同等である。
+第五に，\kw{別途適合したアフィン対照の差も経路依存}である。\RtoP{} ではアダプタが全セルで $8$--$23$ 点高いが，
 \PtoR{} では差が小さく，SciQ @8 ではアフィンが $3.4$ 点高い。すなわち，学習済みアダプタがつねにアフィン写像を上回るわけではない。
-\emph{(f)} \kw{自系統対照との差は翻訳誤差だけではない}。B 後段では純 Pythia，\Pythiaself{}，\RtoP{} の順に下がり，
+第六に，\kw{自系統対照との差は翻訳誤差だけではない}。B 後段では純 Pythia，\Pythiaself{}，\RtoP{} の順に下がり，
 \Pythiaself{}--\RtoP{} 差は SciQ $4$--$19$ 点，ARC $3$--$12$ 点である。一方 A 後段では \PtoR{} が \RWKVself{} を深い境界で逆に上回り，
 $L=16/24$ の差は ARC $+2.7/+7.4$ 点，SciQ $+8.2/+12.0$ 点となる。
-自系統対照は復号段を切り分けるが，横断との差には前段親の能力と翻訳のずれがともに入るため，普遍的な「翻訳コスト」とは読めない。
+自系統対照は符号化と復号の往復による損失を切り分けるが，横断との差には前段親の能力と翻訳のずれがともに入るため，普遍的な「翻訳コスト」とは読めない。
 
-\paragraph{\RtoP{} と \PtoR{} では深さ依存が異なる.}表~\ref{tab:direction} のとおり，\PtoR{} は $L{=}16,24$ で同じ層の \RtoP{} を
-ARC で $+8.9/+12.6$ 点，SciQ で $+13.5/+18.8$ 点上回る（同一問題の McNemar 検定，すべて
-$p<3{\times}10^{-15}$）。一方，$L{=}4$ は ARC で $+2.6$ 点（$p{=}0.015$）だが SciQ で $-1.7$ 点
-（$p{=}0.28$）であり，浅い境界では経路差は一様でない。なお，どの \PtoR{} 構成も Pythia を有意に下回る。また RWKV に対して有意に優る \PtoR{} 構成はなく，
-\PtoRL{4} は ARC $62.2$ 対 $61.8$（$p{=}0.66$），SciQ $69.2$ 対 $67.0$（$p{=}0.14$）で同等である。
+\paragraph{\RtoP{} と \PtoR{} では深さ依存が異なる}表~\ref{tab:direction} のとおり，\PtoR{} は $L{=}16,24$ で同じ層の \RtoP{} を
+ARC で $+8.9/+12.6$ 点，SciQ で $+13.5/+18.8$ 点上回る。同一問題の McNemar 検定では，すべて
+$p<3{\times}10^{-15}$ となる。一方，$L{=}4$ は ARC で $+2.6$ 点，$p{=}0.015$ だが，SciQ では $-1.7$ 点，
+$p{=}0.28$ であり，浅い境界では経路差は一様でない。なお，どの \PtoR{} 構成も Pythia を有意に下回る。また RWKV に対して有意に優る \PtoR{} 構成はなく，
+\PtoRL{4} は ARC $62.2$ 対 $61.8$ で $p{=}0.66$，SciQ $69.2$ 対 $67.0$ で $p{=}0.14$ となり，同等である。
 
-\PtoR{} の最良アフィン写像は，各切替層でアダプタと別に適合した対照である。ARC @4 ではアダプタが $+2.0$ 点
-（$p{=}0.005$）だが，他の多くは差がなく，SciQ @8 では逆にアフィンが $+3.4$ 点（$p{=}0.003$）である。
+\PtoR{} の最良アフィン写像は，各切替層でアダプタと別に適合した対照である。ARC @4 ではアダプタが $+2.0$ 点で
+$p{=}0.005$ となるが，他の多くは差がない。SciQ @8 では逆にアフィンが $+3.4$ 点で $p{=}0.003$ となる。
 この写像間比較とは別に，同一アダプタの非線形枝を $\alpha=0$ とする介入を \RtoP{}／\PtoR{} の同じ四層・同じ問題で実行し，
-因果的な非線形枝の寄与はそのペア化結果から評価する。$A\!\to\!A$ 自己符号器との比較も，
+因果的な非線形枝の寄与はそのペア化結果から評価する。\RWKVself{} 対照との比較も，
 RWKV 前段を Pythia 前段と横断翻訳へ同時に置き換えるため，翻訳誤差だけを分離しない。
 
 \paragraph{合成によるメモリ上の効果：Transformer 層とともに KV キャッシュが消える}性能と推論メモリは同時に評価する必要がある。
@@ -592,11 +772,11 @@ RWKV 前段を Pythia 前段と横断翻訳へ同時に置き換えるため，�
 が，RNN 層が持つのは\kw{系列長に対して $O(1)$} の再帰状態である。\RtoP{} は Transformer を $31{-}L$ 層，
 \PtoR{} は $L{+}1$ 層だけ保持する。なお削減の対象は KV キャッシュであって常駐重みではない。アダプタ自体は fp16 で $0.50$ GiB を占め，一方向のみを常駐させても約 $0.25$ GiB で，削減後の KV と同程度である。
 
-\begin{table*}[!t]\centering\footnotesize
-\caption{\RtoP{}／\PtoR{} 両経路の正答率と推論メモリ。KV は実測値；RWKV 再帰状態は文脈長に対して定数である。}\label{tab:kv}
+\begin{table*}[!t]\centering\small
+\caption{\RtoP{}／\PtoR{} 両経路の正答率と推論メモリ。KV は実測値であり，RWKV 再帰状態は文脈長に依存しない。}\label{tab:kv}
 \begin{tabular}{lccccc}\toprule
 構成 & Transformer 層 & KV / token & KV @ $4$k 文脈 & 削減 & ARC / SciQ\\\midrule
-pure Tulu-Pythia & 32 & $512$ KiB & $2.00$ GiB & --- & 65.3 / 81.0\\
+pure Tulu-Pythia & 32 & $512$ KiB & $2.00$ GiB & $0\%$ & 65.3 / 81.0\\
 \RtoPL{4}  & 27 & $432$ KiB & $1.69$ GiB & $15.6\%$ & 59.6 / 70.9\\
 \RtoPL{8}  & 23 & $368$ KiB & $1.44$ GiB & $28.1\%$ & 59.0 / 67.7\\
 \RtoPL{16} & 15 & $240$ KiB & $0.94$ GiB & $53.1\%$ & 48.6 / 54.5\\
@@ -604,26 +784,27 @@ pure Tulu-Pythia & 32 & $512$ KiB & $2.00$ GiB & --- & 65.3 / 81.0\\
 \PtoRL{24} & 25 & $400$ KiB & $1.56$ GiB & $21.9\%$ & 59.6 / 69.9\\
 \PtoRL{16} & 17 & $272$ KiB & $1.06$ GiB & $46.9\%$ & 57.5 / 68.0\\
 \PtoRL{8}  &  9 & $144$ KiB & $0.56$ GiB & $71.9\%$ & 57.3 / 64.6\\
-\textbf{\PtoRL{4}} & \textbf{5} & \textbf{$\mathbf{80}$ KiB} & \textbf{$\mathbf{0.31}$ GiB} &
-\textbf{$\mathbf{84.4}\%$} & \textbf{62.2 / 69.2}\\
+\boldmath\textbf{\PtoRL{4}} & \textbf{5} & \textbf{$\mathbf{80}$ KiB} & \textbf{$\mathbf{0.31}$ GiB} &
+\boldmath\textbf{$\mathbf{84.4}\%$} & \textbf{62.2 / 69.2}\\
 pure RWKV-Raven & 0 & $0$ & $0$ & $100\%$ & 61.8 / 67.0\\\bottomrule
 \end{tabular}
 \end{table*}
 
 \RtoP{}／\PtoR{} を含めると，\PtoRL{4} は \RtoPL{4} より Transformer 層を $27\to5$ へ減らしながら，二タスク平均を
-$65.25\%\to65.70\%$ とほぼ保つ。置き換える RWKV の再帰状態は層あたり $64$ KiB（$5$ 状態ベクトルのうち $2$ つが fp16，$3$ つが fp32 という参照実装の構成からの算出値）で，構成上文脈長に依存しない。
+$65.25\%\to65.70\%$ とほぼ保つ。置き換える RWKV の再帰状態は層あたり $64$ KiB である。この値は，参照実装が持つ
+$5$ 状態ベクトルのうち $2$ つを fp16，$3$ つを fp32 として算出した。再帰状態の大きさは構成上，文脈長に依存しない。
 ただし純 RWKV は KV がゼロであり，順位はタスクに依存するため，図~\ref{fig:tradeoff} は SciQ に限った
-メモリ--精度フロンティアとして示す。
+メモリと精度のフロンティアとして示す。
 
-\begin{figure}[!htbp]\centering
-\begin{tikzpicture}[font=\scriptsize,>={Stealth[length=2mm]}]
+\begin{figure}[!htb]\centering
+\begin{tikzpicture}[font=\small,>={Stealth[length=2mm]}]
   \def\xs{0.62}
   \def\ys{0.15}
   \draw[->] (0,0) -- (68mm,0);
-  \draw[->] (0,0) -- (0,5.6) node[above left,font=\scriptsize,align=left] {SciQ\\正答率};
-  \node[font=\scriptsize] at (34mm,-8mm) {KV キャッシュ削減率（\%）};
-  \foreach \x in {0,20,40,60,80,100} \draw (\x*\xs/10,-1pt) node[below,font=\tiny]{\x} -- (\x*\xs/10,2pt);
-  \foreach \y in {55,65,75} \draw (-1pt,{(\y-50)*\ys}) node[left,font=\tiny]{\y} -- (2pt,{(\y-50)*\ys});
+  \draw[->] (0,0) -- (0,5.6) node[above left,align=left] {SciQ\\正答率};
+  \node at (34mm,-8mm) {KV キャッシュ削減率 / \%};
+  \foreach \x in {0,20,40,60,80,100} \draw (\x*\xs/10,-1pt) node[below]{\x} -- (\x*\xs/10,2pt);
+  \foreach \y in {55,65,75} \draw (-1pt,{(\y-50)*\ys}) node[left]{\y} -- (2pt,{(\y-50)*\ys});
   \coordinate (pP) at (0,{(81.0-50)*\ys});
   \coordinate (ab4) at ({15.625*\xs/10},{(70.9-50)*\ys});
   \coordinate (ab8) at ({28.125*\xs/10},{(67.7-50)*\ys});
@@ -640,25 +821,22 @@ $65.25\%\to65.70\%$ とほぼ保つ。置き換える RWKV の再帰状態は層
   \foreach \p in {ba4,ba8,ba16,ba24}
     \node[fill=orange!80!black,rectangle,minimum size=3.4pt,inner sep=0pt] at (\p) {};
   \fill[blue!70!black] (rw) circle (1.8pt);
-  \node[above right=-1pt and 1pt of pP,font=\tiny,text=orange!70!black] {pure Pythia};
-  \node[above left=-1pt and 1pt of ab4,font=\tiny,text=blue!60!black] {$L=4$};
-  \node[below=1pt of ab8,font=\tiny,text=blue!60!black] {$L=8$};
-  \node[below=1pt of ab16,font=\tiny,text=blue!60!black] {$L=16$};
-  \node[below=1pt of ab24,font=\tiny,text=blue!60!black] {$L=24$};
-  \node[above left=-1pt and 1pt of ba4,font=\tiny,text=orange!70!black] {$L=4$};
-  \node[below=1pt of ba8,font=\tiny,text=orange!70!black] {$L=8$};
-  \node[above=1pt of ba16,font=\tiny,text=orange!70!black] {$L=16$};
-  \node[below right=-1pt and 1pt of ba24,font=\tiny,text=orange!70!black] {$L=24$};
-  \node[above left=-1pt and 1pt of rw,font=\tiny,text=blue!60!black] {pure RWKV};
-  \node[align=left,font=\tiny,fill=white,rounded corners=1pt,inner sep=2pt] at (42mm,5.25)
-    {\textcolor{blue!70!black}{$\bullet$} \RtoP{}（RWKV 前段）\quad
-     \textcolor{orange!80!black}{$\blacksquare$} \PtoR{}（Pythia 前段）\\
+  \node[above right=-1pt and 1pt of pP,text=orange!70!black] {pure Pythia};
+  \node[above left=-1pt and 1pt of ab4,text=blue!60!black] {$L=4$};
+  \node[below=1pt of ab8,text=blue!60!black] {$L=8$};
+  \node[below=1pt of ab16,text=blue!60!black] {$L=16$};
+  \node[above=1pt of ab24,text=blue!60!black] {$L=24$};
+  \node[above left=-1pt and 1pt of ba4,text=orange!70!black] {$L=4$};
+  \node[below=1pt of ba8,text=orange!70!black] {$L=8$};
+  \node[below=1pt of ba16,text=orange!70!black] {$L=16$};
+  \node[above right=-1pt and 1pt of ba24,text=orange!70!black] {$L=24$};
+  \node[below=2pt of rw,text=blue!60!black] {pure RWKV};
+  \node[align=left,fill=white,rounded corners=1pt,inner sep=2pt] at (42mm,5.25)
+    {\textcolor{blue!70!black}{$\bullet$} \RtoP{}，RWKV 前段\\
+     \textcolor{orange!80!black}{$\blacksquare$} \PtoR{}，Pythia 前段\\
      \textcolor{green!50!black}{\rule[0.3ex]{4mm}{0.8pt}} SciQ 非支配フロンティア};
 \end{tikzpicture}
-\caption{\RtoP{}／\PtoR{} の SciQ 正答率と実測 KV 削減率。両経路を含む非支配点は
-pure Pythia $\to$ \RtoPL{4} $\to$ \PtoRL{24} $\to$ \PtoRL{4} $\to$ pure RWKV（緑）となる。
-これは SciQ 一課題上の事後的フロンティアであり，
-経路一般の優越や未知課題への汎化を意味しない。}
+\caption{\RtoP{}／\PtoR{} の SciQ 正答率と実測 KV 削減率。緑線は両経路を含む非支配点を結ぶ。}
 \label{fig:tradeoff}
 \end{figure}
 Pythia 前段の経路を加えると，高削減点 \PtoRL{4} が得られる。この点は RWKV 前段の経路だけでは現れない。
@@ -670,24 +848,25 @@ Pythia 前段の経路を加えると，高削減点 \PtoRL{4} が得られる�
 \PtoRL{4} で Pythia の正答率の一部を保ちながら Transformer KV を $84.4\%$ 除けることである。
 
 \paragraph{翻訳は領域特異的である}以上の正答率は，指示形式に近い短い設問で測ったものである。KV キャッシュの
-節約が意味を持つのは長い文脈であり，そこでキメラが異なる領域のテキストコーパス（WikiText-103~\cite{merity2017pointer}）に対してどれだけ言語モデルを保つかを測る必要がある。文脈 $512$ の \RtoPL{4} は Alpaca で perplexity $6.40$，WikiText-103 で $93.87$ である。\PtoRL{4} は
+節約が意味を持つのは長い文脈であり，そこでキメラが異なる領域のテキストコーパスに対してどれだけ言語モデルを保つかを
+測る必要がある。領域外コーパスには WikiText-103~\cite{merity2017pointer} を用いる。文脈 $512$ の \RtoPL{4} は
+Alpaca で perplexity $6.40$，WikiText-103 で $93.87$ である。\PtoRL{4} は
 $3.85/45.00$ と両領域で改善するが，WikiText はなお親の $11.33/16.22$ から大きく離れる。文脈を $2048$ へ伸ばすと
 \PtoRL{4} は Alpaca $3.50$，WikiText $34.78$ となり，崩壊せずむしろ改善する。したがって主因は文脈長でなく
 \emph{領域シフト}である。\PtoR{} はシフトを緩和するが，WikiText $34.78$ は良い方の親 RWKV $8.27$ の $4.2$ 倍であり，依然として高い perplexity にとどまる。
 
 
-\begin{figure}[!htbp]\centering
-\resizebox{\columnwidth}{!}{%
-\begin{tikzpicture}[font=\scriptsize]
+\begin{figure}[!htb]\centering
+\begin{tikzpicture}[font=\small,xscale=0.9]
   % log-scale perplexity bars, in-domain (Alpaca) vs out-of-domain (WikiText), ctx 512. 1 decade = 1.2cm.
   \def\Y#1{ {12*ln(#1)/ln(10)/10} }
-  \draw[->] (0,0) -- (0,3.7) node[above,font=\scriptsize] {パープレキシティ（対数）};
-  \foreach \v in {3,10,30,100,300} \draw[gray!30] (0,\Y{\v}) node[left,font=\tiny,black]{\v} -- (84mm,\Y{\v});
+  \draw[->] (0,0) -- (0,3.7) node[above right] {パープレキシティ / 対数軸};
+  \foreach \v in {3,10,30,100,300} \draw[gray!30] (0,\Y{\v}) node[left,black]{\v} -- (84mm,\Y{\v});
   \draw[thick] (0,0) -- (84mm,0);   % x baseline
   \def\grp#1#2#3#4{  % xcenter(mm), label, alpaca_ppl, wiki_ppl
     \fill[teal!60] (#1mm-4.2mm,0) rectangle (#1mm-0.4mm,\Y{#3});
     \fill[red!40]  (#1mm+0.4mm,0) rectangle (#1mm+4.2mm,\Y{#4});
-    \node[font=\tiny,below=1pt] at (#1mm,0) {#2};
+    \node[below=1pt] at (#1mm,0) {#2};
   }
   \grp{11}{RWKV}{3.42}{11.33}
   \grp{33}{Pythia}{5.19}{16.22}
@@ -695,32 +874,32 @@ $3.85/45.00$ と両領域で改善するが，WikiText はなお親の $11.33/16
   \grp{77}{\shortstack{Pythia$\to$\\RWKV\\$L=4$}}{3.85}{45.00}
   % legend in the empty top-left (above the short parent bars)
   \fill[teal!60] (3mm,3.25) rectangle (7mm,3.45);
-  \node[font=\tiny,anchor=west] at (7mm,3.35) {領域内 Alpaca};
-  \fill[red!40]  (27mm,3.25) rectangle (31mm,3.45);
-  \node[font=\tiny,anchor=west] at (31mm,3.35) {領域外 WikiText};
-\end{tikzpicture}}
-\caption{領域シフト（文脈 $512$，対数軸）。\PtoR{} は \RtoPL{4} の
-WikiText perplexity を $93.87\to45.00$ に改善するが，両親 $11.33/16.22$ には届かない。同じアダプタが
-Alpaca では親の近傍にあるため，長さでなく領域が主要な差である。}
+  \node[anchor=west] at (7mm,3.35) {領域内 Alpaca};
+  \fill[red!40]  (36mm,3.25) rectangle (40mm,3.45);
+  \node[anchor=west] at (40mm,3.35) {領域外 WikiText};
+\end{tikzpicture}
+\caption{文脈 $512$ における Alpaca と WikiText-103 の perplexity。縦軸は対数である。}
 \label{fig:domain}
 \end{figure}
 
 \section{考察}\label{sec:discussion}
-本実験では，凍結した異種系統の対応層間に，共有表現を学習できる（$\rho_{\mathrm{ctr}}\!=\!0.90$）。
+本実験では，凍結した異種系統の対応層間に，$\rho_{\mathrm{ctr}}\!=\!0.90$ となる共有表現を学習できる。
 \kw{ただし主張の射程は限定的である}：本研究の対応は\emph{同一トークナイザ・同一幅・同一層数・同一入力・Alpaca 近傍領域}
 という好条件で測ったものであり，シャッフル対照はトークン非依存の分布一致を排除するが，観測された対応が意味・語彙・位置・
-構文のいずれに由来するかは切り分けていない。領域外 WikiText で perplexity が劣化すること（\S\ref{sec:goal}）は，学習領域の外への汎化に疑問が残ることを示す。ゆえに「一般的な共通\emph{意味}空間」を主張せず「好条件下でトークン対応
+構文のいずれに由来するかは切り分けていない。\S\ref{sec:goal}で示したように，領域外 WikiText では perplexity が劣化する。
+この結果は，学習領域の外への汎化に疑問が残ることを示す。ゆえに「一般的な共通\emph{意味}空間」を主張せず「好条件下でトークン対応
 した表現の共通空間」の存在を主張するにとどめる。
 
-機能的な接合が成立することは，両者が同じ情報を表現していることを意味しない。Smith ら~\cite{pmlr-v267-smith25a} は，異なる課題や異なるモダリティの間，さらにはクラスタ化した乱数由来の表現からでも接合が成立し得ることを示している。ただし彼らの接合層は下流課題の損失で学習されており，Balogh と Jelasity~\cite{balogh2025not} が，その方式は対応しない層や領域外の表現を高く評価すると指摘した手法にあたる。本研究のアダプタは対応残差の直接整合で学習しており，同論文が構造的要求と機能的要求のバランスが良いとした側に属する。とはいえ Smith らは低容量の接合層でも偽の整合を得ており，本研究のアダプタはより表現力が高い。低容量のアフィン写像でも相当な横断予測が得られること（\S\ref{sec:linear}）が，観測された整合をアダプタの表現力だけでは説明できないとする主たる根拠である。高い潜在相関が高い読み出し精度を保証しない点も重要であり，共有表現の有無と
-復号可能性は分けて評価する必要がある。この区別は独立にも報告されている。Zhang と Xin のプレプリント~\cite{zhang2026negativeresultcrossmodelactivation} は，Pythia 間の線形ブリッジがオフラインでは正規化 $R^2=0.883$ に達しながら，受信側へ置換注入すると多段推論の性能がかえって下がることを示し，受信側での因果的な利用を目的関数に含める必要があると結論づけた。本研究のアダプタも活性の再構成のみで学習しており，この指摘の射程内にある。ただし本研究の境界式は層別統計による逆標準化 $\mathrm{unstd}_B$ を含み，受信側本来のスケールを復元する点が，正規化目的で学習された彼らの線形ブリッジと異なる。この構造的差異が寄与しているかは，本研究では切り分けていない。この空間上に組んだキメラは機能するものの損失を伴い，生成例では両経路とも流暢さを
+機能的な接合が成立することは，両者が同じ情報を表現していることを意味しない。Smith ら~\cite{pmlr-v267-smith25a} は，異なる課題や異なるモダリティの間，さらにはクラスタ化した乱数由来の表現からでも接合が成立し得ることを示している。ただし彼らの接合層は下流課題の損失で学習されており，Balogh と Jelasity~\cite{balogh2025not} が，その方式は対応しない層や領域外の表現を高く評価すると指摘した手法にあたる。本研究のアダプタは対応残差の直接整合で学習しており，同論文が構造的要求と機能的要求のバランスが良いとした側に属する。とはいえ Smith らは低容量の接合層でも偽の整合を得ており，本研究のアダプタはより表現力が高い。\S\ref{sec:linear}で示したように，低容量のアフィン写像でも相当な横断予測が得られる。この結果が，観測された整合をアダプタの表現力だけでは説明できないとする主たる根拠である。高い潜在相関が高い読み出し精度を保証しない点も重要であり，共有表現の有無と
+復号可能性は分けて評価する必要がある。この区別は独立にも報告されている。Zhang と Xin のプレプリント~\cite{zhang2026negativeresultcrossmodelactivation} は，Pythia 間の線形ブリッジがオフラインでは正規化 $R^2=0.883$ に達しながら，受信側へ置換注入すると多段推論の性能がかえって下がることを示し，受信側での因果的な利用を目的関数に含める必要があると結論づけた。本研究のアダプタも活性の再構成のみで学習しており，この指摘の射程内にある。ただし式~\eqref{eq:boundary}は層別統計による逆標準化を含み，受信側本来のスケールを復元する点が，正規化目的で学習された彼らの線形ブリッジと異なる。この構造的差異が寄与しているかは，本研究では切り分けていない。この空間上に組んだキメラは機能するものの損失を伴い，生成例では両経路とも流暢さを
 保ったまま内容または形式を誤る。競争力のあるキメラには，$B\!\to\!B$ を律速する要因の特定，領域をまたいだ学習，および事前学習側で相補的な親モデルの選定が必要である。
 
 \section{限界}\label{sec:limitations}
-評価課題への露出がある。Tulu-Pythia は FLAN V2 の部分集合で指示チューニングされており，FLAN の構成タスク一覧には ARC と SciQ が含まれる。公開されている混合データの当該成分を逐語照合すると，評価項目のうち ARC-Easy $19$ 問と SciQ $4$ 問が見つかる。照合は逐語一致に限られ，言い換えや書式の差，および偶然の一致を避けるため除外した $6$ 語未満の問題（ARC-Easy $40$ 問，SciQ $11$ 問）は検出できないため，これらは下限である。項目単位の正誤記録からこれらを除いて全構成の正答率を再計算しても変化は最大 $0.22$ 点であり，本稿のどの比較の結論も変わらない。さらに，これらの項目は露出のない RWKV でも同方向に難化・易化しており（ARC で $-9.2$ 点，SciQ で $+8.0$ 点），差は露出ではなく項目自体の難易度で説明される。ただし ARC-Easy・SciQ が後段親のすでに持つ課題族であることは変わらないため，本稿の値は未知能力の獲得ではなく合成後の能力保持を測るものと読むべきである。
+評価課題への露出がある。Tulu-Pythia は FLAN V2 の部分集合で指示チューニングされており，FLAN の構成タスク一覧には ARC と SciQ が含まれる。公開されている混合データの当該成分を逐語照合すると，評価項目のうち ARC-Easy $19$ 問と SciQ $4$ 問が見つかる。照合は逐語一致に限られるため，言い換えや書式の差は検出できない。偶然の一致を避けるため除外した $6$ 語未満の問題も検出対象外であり，その内訳は ARC-Easy $40$ 問と SciQ $11$ 問である。したがって，検出数は下限となる。項目単位の正誤記録からこれらを除いて全構成の正答率を再計算しても変化は最大 $0.22$ 点であり，本稿のどの比較の結論も変わらない。さらに，これらの項目は露出のない RWKV でも同方向に難化・易化する。変化は ARC で $-9.2$ 点，SciQ で $+8.0$ 点であり，差は露出ではなく項目自体の難易度で説明される。ただし ARC-Easy・SciQ が後段親のすでに持つ課題族であることは変わらないため，本稿の値は未知能力の獲得ではなく合成後の能力保持を測るものと読むべきである。
 
-アダプタの学習は乱数種一つのみである。性能は\kw{全評価集合}（ARC-Easy $2376$，SciQ $1000$）で測り，構成間の差は
-同一問題上のペア化検定（McNemar の正確検定と対応 bootstrap）で評価した。\RtoP{} が弱い親を上回るのは SciQ のみ，かつ長さ正規化スコアに限られ（総和スコアでは成立しない），
+アダプタの学習は乱数種一つのみである。性能は ARC-Easy $2376$ 問と SciQ $1000$ 問からなる\kw{全評価集合}で測り，
+構成間の差は McNemar の正確検定と対応 bootstrap による同一問題上のペア化検定で評価した。\RtoP{} が弱い親を上回るのは
+SciQ のみ，かつ長さ正規化スコアに限られる。総和スコアでは成立しない。
 \PtoR{} はどの境界も RWKV を有意に上回らない。$2$ タスク$\times2$ 横断経路$\times4$ 切替と複数対照を評価し，多重比較補正は
 行っていない。
 非線形枝の同一アダプタ介入は \RtoP{}／\PtoR{} とも同じ層・問題で行ったが，単一チェックポイント上の介入であり，
@@ -731,70 +910,45 @@ Alpaca では親の近傍にあるため，長さでなく領域が主要な差�
 \RtoP{}／\PtoR{} 各四つの生成例は定性的な補足にとどまり，生成能力の包括的評価ではない。
 
 加えて，翻訳は
-\emph{学習領域に特化}しており，WikiText では大きく劣化する。長文脈 CE は文脈 $512$/$1024$/$2048$ で測る（両親が
-いずれも文脈長 $\le 2048$ のモデルであるため $2048$ を上限とする）。これは言語モデリングの品質であって，遠距離
+\emph{学習領域に特化}しており，WikiText では大きく劣化する。長文脈 CE は文脈 $512$/$1024$/$2048$ で測る。
+Tulu-Pythia の最大位置数が $2048$ であり，どちらの横断経路も同モデルを含むため，共通の評価上限を $2048$ とした。
+RWKV の変換後設定が指定する $1024$ を超える測定点は，設定上の長さを越えた外挿にあたる。さらに，変換元となった
+BlinkDL のファイル名とリビジョンが残っていないため，元のチェックポイントが掲げた学習時のコンテキスト長は確認できない。
+これは言語モデリングの品質であって，遠距離
 依存を要する読解を直接測るものではない。$\sigma$・$\lambda$・潜在幅・残差ブロック数・
-学習データ量に対するアブレーション，および同一系統ペア（同一アーキテクチャ）での整合は本 $32$ 層構成では実施しておらず，
+学習データ量に対するアブレーション，および同じアーキテクチャを持つ同一系統ペアでの整合は本 $32$ 層構成では実施しておらず，
 今後の課題である。
 
-{\small
-\bibliographystyle{IEEEtran}
-\bibliography{reference}}
+\section{おわりに}\label{sec:conclusion}
+本研究は，異なる事前学習系統の凍結ブロックを単一の共有潜在アダプタで一箇所だけ接続するキメラモデル群
+\kw{NinaXander} を構築し，RWKV-4-Raven-7B と Tulu-Pythia-6.9b を対象に，系統をまたぐ合成について
+何が成立し何が成立しないかを，表現のレベルから下流の機能まで順に測った。同一トークナイザ・同一幅・同一層数・
+同一学習領域という好条件のもとで，対応層間の整合は\emph{学習可能}であり，中心化潜在相関は $0.901$ に達する一方，
+行対応をシャッフルすると $0.000$ へ崩壊する。ただし生表現の CKA は同一層で最大にならず，領域外では性能が劣化する
+以上，示されたのは一般的な意味空間ではなく，好条件下で学習可能なトークン対応表現である。系統横断に入る前の，
+自系統再構成の段階ですでに誤差が残る。横断読み出しは，それぞれ同じ復号器を使う自系統対照を全層で下回るが，
+その誤差が符号器・潜在の正規化・復号器・学習時ノイズのいずれに由来するかは切り分けていない。学習済みアダプタから
+非線形枝を外すと両横断読み出しは負の $\Rsq$ まで崩れるが，これは同時に学習された写像から枝だけを除いた場合の
+性質であって，非線形性が系統間の接続に一般に必要であることを示さない。実際 \PtoR{} では，別途適合したアフィン
+対照とアダプタの差は小さい。機能の側では，アダプタを一度学習すれば $4$ 切替位置 $\times$ $2$ 方向の $8$ 構成が
+構成ごとの再学習なしに得られ，合成したキメラは構文的に妥当な生成と多肢選択の遂行が可能である。\PtoRL{4} は
+Transformer を $5$ 層だけ残して KV キャッシュを $84.4\%$ 削減しながら ARC-Easy $62.2\%$，SciQ $69.2\%$ を保つ。
+ただし削減されるのは KV キャッシュであって常駐重みではなく，アダプタ自体が fp16 で $0.50$ GiB を占め，
+一方向のみを常駐させても約 $0.25$ GiB と，文脈 $4$k での削減後の KV $0.31$ GiB と同程度の常駐費用が加わる。
+生成例では両経路とも流暢さを保ったまま内容または形式を誤り，どの構成も強い親 Tulu-Pythia を超えない。
+\PtoRL{4} は RWKV をも有意には上回らない。ARC は $62.2$ 対 $61.8$ で $p{=}0.66$，SciQ は $69.2$ 対 $67.0$ で
+$p{=}0.14$ となり，統計的に同等である。この $L{=}4$ という既定値自体も報告テスト上の事後選択であり，独立な
+deployment-selection 分割はない。
 
-\appendices
-\section{再現情報}\label{sec:repro}
-\begin{itemize}\setlength{\itemsep}{1pt}
-\item \kw{モデル}：RWKV-4-Raven-7B（BlinkDL \texttt{.pth} を HF 形式へ変換し fp16 再保存）と
-\texttt{allenai/open-instruct-pythia-6.9b-tulu}（fp16）。ともに $32$ 層，$d{=}4096$，GPT-NeoX-20B トークナイザ。
-\item \kw{アダプタ}：$z{=}d{=}4096$，残差ブロック $1$（内部幅 $4096$，第 $2$ 行列ゼロ初期化），非アフィン LN，
-$\sigma{=}0.4$，$\lambda{=}1$，$268.5$M パラメータ。AdamW，$4{\times}$V100 で有効バッチ $4096$，学習率 $10^{-3}\!\to\!10^{-5}$
-（保留集合の $A\!\to\!B$ が改善しなくなったら $\times0.5$），$416{,}000$ 反復走行（報告チェックポイントは保留 $A\!\to\!B$ 最良の $415{,}000$ 反復），乱数種 $0$。
-\item \kw{データ}：残差は Alpaca 学習分割の先頭側（窓 $112$ トークン，$\approx\!232$k 独立トークン位置）から，評価窓は
-文字位置 $2{,}000{,}000$ 以降から取り（学習トークン数に依存しない固定オフセット），両者は重ならない。標準化統計は各層の学習残差から
-算出し逆標準化に用いる。
-\item \kw{評価}：保留集合の $\Rsq$ は各層で全トークン・全次元をプールして算出し，$32$ 層の単純平均を報告する。多肢選択は各選択肢を連結した系列の
-対数尤度（プロンプト以降のトークンの和／平均）で決定し，全評価集合（ARC-Easy test $2376$，SciQ test $1000$）を用いる。
-SciQ は support 文を与えない closed-book 形式で評価する。
-構成間の差はペア化検定（McNemar・対応 bootstrap）で評価する。\PtoR{} の RWKV 後段では選択肢を常に batch $1$ で評価する。
-\PtoR{} も \RtoP{} と同じ，保留 $A\!\to\!B$ で選んだ step $415{,}000$ の配布チェックポイントに固定し，
-$B\!\to\!A$ または \PtoR{} QA を見たチェックポイントの再選択は行わない。ただし方向固定した二つの配布 runtime は，
-評価後に各経路の四境界について報告テスト平均が最大だった $L{=}4$ を既定値とし，独立な deployment-selection 分割はない。
-\item \kw{コード・構造化データ}：本研究のリポジトリは
-\href{https://github.com/Katagiri-Hoshino-Lab/NinaXander}{\texttt{https://github.com/Katagiri-Hoshino-Lab/NinaXander}}
-である。実験コード，各評価の生データと
-論文報告値の集約表，再現手順，および本文の数値を表データと自動照合する検査を含む。
-\item \kw{Hugging Face 配布物}：2026 年 7 月 30 日時点の推論用成果物を，次の三つの model repository
-へ保存した。
-\begin{itemize}\setlength{\itemsep}{0pt}
-\item 共有アダプタ：\hfrepo
-  {https://huggingface.co/Katagiri-Hoshino-Lab/ninaxander-raven7b-tulu69-adapter}
-  {ninaxander-raven7b-tulu69-adapter}
-\item \PtoR{}（既定 $L{=}4$）：\hfrepo
-  {https://huggingface.co/Katagiri-Hoshino-Lab/ninaxander-tulu69-to-raven7b-best}
-  {ninaxander-tulu69-to-raven7b-best}
-\item \RtoP{}（既定 $L{=}4$）：\hfrepo
-  {https://huggingface.co/Katagiri-Hoshino-Lab/ninaxander-raven7b-to-tulu69-best}
-  {ninaxander-raven7b-to-tulu69-best}
-\end{itemize}
-各 repository は英語・日本語・簡体字中国語の model card と notice，SafeTensors，SHA-256 manifest を含む。
-配布 License はいずれも，より制約の強い親（Tulu-Pythia）に合わせた AI2 AI Model License（非商用研究限定）であり，
-各 NOTICE に親モデルの帰属を記載する。
-\end{itemize}
+残された課題も同じ測定から導かれる。最大の弱点は領域外への汎化であり，文脈 $2048$ の \PtoRL{4} は WikiText で
+perplexity $34.78$ と，良い方の親 RWKV の $8.27$ から大きく離れたままである。あわせて，$B\!\to\!B$ が $0.711$ に
+留まる要因の特定，領域をまたいだ学習，事前学習側で相補的な親モデルの選定，複数境界における翻訳誤差の累積の測定，
+$\sigma$・$\lambda$・潜在幅・残差ブロック数・学習データ量に対するアブレーション，そして複数の乱数種による再現が
+今後の課題として残る。本研究が示したのは競争力のある新モデルではなく，凍結資産の事後的な再構成が部分的に可能で
+あること，および凍結した親の間に追加の交換点を作れることであり，その成立条件と限界を測定として記述したことが
+本稿の寄与である。
 
-\section{指標の定義}\label{sec:common-mode}
-本節は指標の厳密な定義を述べる。
+\bibliographystyle{ipsjunsrt}
+\bibliography{reference}
 
-\paragraph{指標の定義}残差は層ごとに，学習トークンから推定した次元別の平均・標準偏差で標準化して用いる
-（キメラ挿入時は逆標準化する）。損失の三項はいずれも全要素（トークン ${\times}$ 次元）の平均であり，
-$z$ は非アフィン LN により単位分散であるから，$\lambda{=}1$ は要素あたりの誤差を同一スケールで加えることに相当する。
-ノイズ $\xi_A,\xi_B$ は独立にサンプルする。
-$\Rsq$ は層ごとに保留トークンと全 $4096$ 次元をプールして
-$1-\mathrm{SSE}/\mathrm{SST}$ で計算する。SST は次元ごとにトークン平均を除いた全変動であり，分散の大きい次元ほど
-寄与が大きい。保留集合は二つある：見出し値を与える学習時評価は $1{,}000$ 窓 ${\times}\,112=112{,}000$ トークン，層別分析とシャッフル対照（\S\ref{sec:space}）は $400$ 窓 ${\times}\,112=44{,}800$ トークンで，評価集合が異なるため層別分析の $32$ 層平均（$0.561/0.592$）は見出し値（$0.559/0.590$）と厳密には一致しない。$\rho_{\mathrm{ctr}}$ は層内で各次元のトークン平均を除去した後，（トークン ${\times}$ 次元）を
-平坦化した単一の Pearson 相関である。$f=\lVert z-\overline z\rVert^2/\lVert z\rVert^2$ の $\overline z$ は
-層内の次元別トークン平均で，$A$，$B$ 各モデルで計算して平均する。いずれの指標も層ごとに算出し，$32$ 層の
-単純平均を報告する。\S\ref{sec:space} の全層対応の適合 $R^2$ は，各層ペアの同一 $22{,}400$ 行で適合・評価する
-サンプル内（in-sample）のリッジ線形プローブである。
-
-\balance
 \end{document}

@@ -95,12 +95,13 @@ sequential/concurrent gate后，才可放到不同CUDA stream运行；这样保�
 不会产生数值不同的batched结果。
 
 双向checkpoint本身不变。仅运行BA时，不可达的E_A/D_B模块可以留在CPU上；
-QA保留E_A用于A→A decoder-loss对照，而D_B在所有BA arm中都不可达。
+QA保留E_A用于A→A对照，而D_B在所有BA arm中都不可达。
 每项定量BA比较都固定为通过held-out A→B选定的同一公开step-415,000 checkpoint，
 不会查看B→A或BA QA后重新选择checkpoint。
 
-其余两个单元`NinaXander-AA@L`与`NinaXander-BB@L`是同族重构对照。
-它们在同一边界使用相同encoder/decoder接口，但不改变模型族。
+其余两个单元`NinaXander-AA@L`与`NinaXander-BB@L`是同族重构对照（沿用相同命名方式，但并非跨族的NinaXander模型）。
+它们在同一边界使用相同encoder/decoder接口，但不改变模型族，
+因此所隔离的是encode–decode往返造成的损失，而不是translation。
 四个单元共同报告在`paper_four_path_qa_accuracy.csv`中。
 
 当前构造只有一个模型族边界，因此只有一次转换。多边界组合不属于报告实验。
@@ -124,22 +125,33 @@ QA保留E_A用于A→A decoder-loss对照，而D_B在所有BA arm中都不可达
 - 单一“supervised ceiling百分比”——报告checkpoint没有匹配的多seed supervised对照。
 - 把`A→A`/`B→B`当作`B→A`/`A→B`的*ceiling*，或把任一差距称为“sharing代价”——
   target位于不同空间；真正的参考ceiling是直接supervise的逐层bridge。
+- 把`A→A`/`B→B`说成隔离了decoder——它们隔离的是encode–decode往返；重构误差来自encoder、
+  潜空间归一化、decoder还是训练时noise，尚未区分。
+- 把α=0干预当作非线性普遍必要的证据——它只说明这个联合训练的适配器不能失去residual-block branch；
+  在BA准确率上，单独拟合的affine对照与适配器的差距也很小（−3.4至+2.0分）。
+- 把post-hoc路径/切换点探索说成无需训练——只有在适配器训练完成后才免去逐配置重训，
+  且相对于重新预训练hybrid或蒸馏的总训练成本优势并未确立。
 
 ## 为什么适配器必须轻量（关键约束）
 
-NinaXander检验的假设是：异构模型的匹配层可在一个*简单*变换后共享语义空间。
+本项目检验的假设是：在有利条件下，异构模型的匹配层共享一种可由*简单*、低容量变换到达的token对齐表征，
+而非一般的语义空间。
 因此适配器容量不仅关系overfitting，也是方法约束。重型适配器（深/宽MLP或大型ResNet）
 可以近似两个空间之间的任意映射，所以用重型适配器得到高AB/BA read-out**不能**证明共享空间。
 只有对齐两个空间的**轻量、低容量**映射支持该假设。最清晰的容量对照是无法拟合任意对应关系的
 *线性*映射；它仍达到AB 0.487和BA 0.535。这些匹配的线性可达性测量承载共享空间论点。
 
 报告潜空间不压缩（`z = d = 4096`），所以“轻量”指*容量*而非宽度。
-适配器是在两个线性映射之间放置一个零初始化residual block；它从严格线性映射开始，
-只增加实际需要的非线性。268.5M参数是14.2B冻结权重的1.9%。
+E与D各自是在两个线性映射之间放置一个零初始化residual block；二者都从线性映射开始训练，
+非线性在训练中习得。像`A→B = D_B(LN(E_A(·)))`这样的跨族路径会经过两个这样的块，且中间隔着non-affine LN，
+因此完整的跨族映射即使在初始化时也不是线性的。268.5M参数是14.2B冻结权重的1.9%。
 两个cross-readout必须连同参数量与架构一并报告；只有映射受到相应约束时，任一方向才构成证据。
 
 训练*后*还剩多少近线性成分可以测量，而结果撤回了“near-linear”表述：
 在完全相同的真实残差行上，最佳affine imitation解释AB适配器输出的**86.6%**、
-BA输出的**88.0%**，故13.4% / 12.0%为不可约非线性。移除同一个已训练residual-MLP branch
-会使两条cross read-out崩溃（AB 0.56→−0.41，BA 0.58→−0.30）。
+BA输出的**88.0%**，故13.4% / 12.0%为不可约非线性，
 因此适配器应称为低*容量*，绝不能称为“near-linear”。
+把同一个已训练适配器的residual-MLP branch一并缩放到α=0（AB经过E_A与D_B中的块，BA经过E_B与D_A中的块），
+会使两条cross read-out（AB 0.56→−0.41，BA 0.58→−0.30）以及两条路径的下游准确率崩溃。
+这是从联合训练的映射中只移除branch时的性质，并不说明非线性普遍必要；在BA准确率上，单独拟合的affine对照
+与适配器的差距很小（−3.4至+2.0分），适配器并未一致地更优。

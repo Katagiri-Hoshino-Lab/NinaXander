@@ -10,7 +10,7 @@ Tulu-Pythia-6.9B pair、step-415,000のforward-hook adapter、
 
 報告adapterは非圧縮latent（`z = d = 4096`）を使い、32 blockすべてを公平にpairにします。
 
-`z = d = 4096`（圧縮なし）、zero-initialized ResBlock 1個（hidden 4096）、σ=0.4、
+`z = d = 4096`（圧縮なし）、encoderとdecoderそれぞれにzero-initialized ResBlock 1個（hidden 4096）、σ=0.4、
 N/layer=228,000、4 GPUでbatch 4096、lr 1e-3をplateau decayで1e-5まで低下させました。
 残差は`hidden_states`ではなく**全32 blockのforward hook**で取得します。
 2回のwalltime cycle（job 1832 → 1837）にわたり**416,000 step**走行した時点で計算資源上限により終了し、報告値はすべてheld-out A→B最良の**step 415,000** checkpointを用います。
@@ -26,12 +26,15 @@ adapter 268.5M parameterは14.2B frozen weightの1.9%です。最深点（step 4
 | f（token-varying energy fraction） | 0.3501 |
 | ρ_raw | 0.9654 |
 
-知見は対応する順序関係、すなわち**ρ_ctr 0.901 > B→B 0.711 > A→B 0.559**と
-**ρ_ctr 0.901 > A→A 0.695 > B→A 0.590**です。32層すべてでABは同じB decoderを使う
+知見は対応する順序関係、すなわち**B→B 0.711 > A→B 0.559**と
+**A→A 0.695 > B→A 0.590**で、そのときのcentered latent alignmentは**ρ_ctr 0.901**です
+（ρ_ctrは相関係数であり、これらのR²と同じ尺度では比較できません）。32層すべてでABは同じB decoderを使う
 BB self-mapを下回り、BAは同じA decoderを使うAA self-mapを下回ります。
-**不足しているのはalignmentではなくdecodeです。**
+**高いlatent alignmentのもとでもsame-family reconstructionの段階ですでに誤差が残り、両cross read-outはそれをさらに下回ります。
+この誤差がencoder、latent normalization、decoder、training時noiseのいずれに由来するかは切り分けていません。**
 
-**どちらのself-mapを制約している要因も未解決です。** decoderはz+ξ、ξ~N(0,σ²)から
+**どちらのself-mapを制約している要因も未解決です。** latentの幅はresidualと等しく、非affine LNが落とすのも
+tokenごとの平均とnormの2自由度にすぎないため、幅やrankが強い制約だとは考えにくいです。decoderはz+ξ、ξ~N(0,σ²)から
 再構築するよう学習するため、最良係数は1/(1+σ²)へ縮みます。ただし1/(1+σ²)≈0.862は
 その係数を*noisy* input上で評価したR²であり、本研究は**clean z（ξ=0）**で評価します。
 scalar-linear ceilingは1−(σ²/(1+σ²))² ≈ **0.98**で、数値的にも確認しました。
@@ -61,7 +64,8 @@ AA 0.6941→0.6950、BB 0.7106→0.7112）なので、これは**厳密な収束
 仮定ではなく実測（`kvcache_measure.py`、job 1809）すると、Tulu-Pythiaは
 **1 token・1 layerあたり16.0 KiB**、32層合計512 KiB/tokenをcacheし、
 2·L·d·2 byteと正確に一致します。代替するRWKV recurrent stateは
-**1 layerあたり40 KiBで、sequence lengthに依存しません**。
+**1 layerあたり64 KiBで、sequence lengthに依存しません**
+（5つのstate vectorのうち2つをfp16、3つをfp32で保持するreference実装からの算出値）。
 
 ABは`31−L`個のTransformer suffix block、BAは`L+1`個のTransformer prefix blockを保持します。
 したがって実測memory/accuracy tableは最初から両経路を含みます。
@@ -120,8 +124,9 @@ ridge 1e-3·tr(XᵀX)/(d+1) ≈ 50）。
 | AB | 0.558 | 0.866 | **13.4%** | 0.490 | 0.487 |
 | BA | 0.576 | 0.880 | **12.0%** | 0.516 | 0.535 |
 
-結果は2つあります。（1）「adapterが厳密なlinear mapとして開始する」というのは
-initialization特性（ResBlock第2 matrixのzero-init）にすぎません。415k step後のmapは明確に
+結果は2つあります。（1）「EとDがそれぞれlinear mapとして学習を始める」というのは
+initialization特性（各ResBlock第2 matrixのzero-init）にすぎず、間に非affine LNが入るため
+cross map全体はその時点でも厳密にはlinearではありません。415k step後のmapは明確に
 non-linearであり、「near-linear」という表現は**撤回**します。（2）最良*direct* affine mapでも
 AB 0.487、BA 0.535へ到達します。任意correspondenceをfitできないlow-capacity mapであり、
 shared-space claimを支えるのはheavy adapterではなく、これらのdirect-affine baselineです。
@@ -151,7 +156,9 @@ Alpaca-fit mapをdomain外へ移したものではありません。
 - **domain内affine対照は記述的で、cleanなnon-linearity ablationではありません。**
   WikiText lin@8 CEはctx 512 → 2048で5.65 → 6.28、adapter@8は4.74 → 4.72ですが、
   2つのmapはobjectiveもtraining dataも異なります。これだけではadapterのnon-linearityを
-  原因と特定できず、両AB/BAに関するcleanな証拠は結果7の対応する同一adapter α介入です。
+  原因と特定できません。結果7の対応する同一adapter α介入は両AB/BAでこのconfoundを除きますが、
+  それが示すのも同時に学習したこのadapterからbranchを外した場合の性質であり、
+  non-linearityが一般に必要であることではありません。
 
 これは両方向でmemory効果（結果2）の範囲を限定します。KV削減は実在しますが、
 inputがtraining domainに似る場合に限ります。
@@ -177,13 +184,14 @@ AAはAの残差を`D_A(E_A(·))`へ通します。`paired_stats.py`は各switch�
 
 - **全AB/BA switchは、両taskでより強いPythia親を有意に下回ります。**
 - **弱い親との関係はpath/task依存です。** AB@4はSciQでRWKVを上回ります
-  （+3.9、p=0.019）が、ARCでは下回ります（−2.2、p=0.042）。
+  （+3.9、p=0.018）が、ARCでは下回ります（−2.2、p=0.042）。
   どのBA switchもRWKVを有意には上回らず、BA@4はARC（+0.4、p=0.66）、
   SciQ（+2.2、p=0.14）で同等です。
-- **same-family armは普遍的な加算「decoder cost」ではありません。**
+- **same-family armは普遍的な加算「encode–decode往復cost」ではありません。**
   B suffixではBBがPythiaを下回り、ABはさらにBBより3〜19 point低くなります。
   A suffixでは逆に深いBAがAAを上回り、L=16/24でARC +2.7/+7.4、
-  SciQ +8.2/+12.0 pointです。AA/BBはdecoder通過を分離しますが、
+  SciQ +8.2/+12.0 pointです。AA/BBはencode–decode往復による損失を分離し、この損失はBBでは全switch層の両taskで、
+  AAでは両taskともL=16/24でのみ有意に下流accuracyへ現れます。ただし
   cross-family差はprefix親も変えるため、translation errorだけとは解釈できません。
 - **depthはpath依存です。** ABはLとともに単調低下しますが、BAはL=16/24で回復し、
   同層ABを8.9〜18.8 point上回ります。local cross-readout R²だけではend-to-end rankingを予測できません。
@@ -204,13 +212,16 @@ equal-memory、intervention rowは`paper_cross_family_qa_accuracy.csv`にあり�
 「共有*semantic* space」から「対応条件下で回収可能なtoken-level representation correspondence」へ
 狭めることと整合します。
 
-## 結果7 · 同じnonlinear branchがAB/BA両read-outを支える
+## 結果7 · adapterのnonlinear branchを外すとAB/BA両read-outが崩壊する
 
 結果3のlinear-map比較は、objective/data/layer-setの異なる*別fit* linear mapを使ったため、
 confoundの可能性があります。`cross_family_mlp_intervention.py`と2つの標準QA evaluatorは
 それを取り除きます。同じ学習済みadapter唯一のnon-linearity、すなわちResBlock branch
 fc2(GELU(fc1(·)))をαでscaleします。α=1はfull、α=0は*同じweight/layer/row*でbranchだけを
-無効にしたものです。representation sweepと両full-set・項目対応QA pathをまとめて保存します。
+無効にしたものです。ABはE_AとD_B、BAはE_BとD_AのResBlockを通るため、両pathが1つのbranchを
+共有するわけではありません。EとDはそれぞれ2つのLinearに挟まれたzero-initialized ResBlock 1個で
+（cross pathはその2個を通ります）、αはそれらすべてをまとめてscaleします。
+representation sweepと両full-set・項目対応QA pathをまとめて保存します。
 
 | path / α | 0 | 0.25 | 0.5 | 0.75 | 1 |
 |---|---:|---:|---:|---:|---:|
@@ -230,10 +241,13 @@ branchを無効化（α=0）すると、ABは**−0.41**、BAは**−0.30**へ�
 
 branchの寄与は**ABで+11.1〜+39.6 point**、**BAで+11.2〜+36.6 point**で、
 16個すべての項目対応McNemar testがp<2e-9です。2点が分かります。
-（1）両α sweepは**非単調**で、0.25は0より悪くなります。branch magnitudeは小さな補正ではなく
-本質的です。（2）各adapter自身のbare linear skeleton（AB −0.41、BA −0.30）は、
+（1）両α sweepは**非単調**で、0.25は0より悪くなります。branchを縮小してもread-outは
+滑らかには劣化しません。（2）各adapter自身のbare linear skeleton（AB −0.41、BA −0.30）は、
 別fit direct affine map（AB 0.487、BA 0.535）より悪くなります。周囲のLinearは
 ResBlockと協調するよう学習されており、それを除けば両pathが崩壊します。
+ただしこれは同時に学習したこのadapterからbranchを外した場合の性質であり、
+non-linearityが一般に必要であることは示しません。少なくともBAの正答率では、別fitのaffine対照と
+adapterの差は小さく（−3.4〜+2.0点、結果3）、adapterが一貫して上回るわけではありません。
 
 ## 結果8 · 等KV Transformer baselineと実際にpruneしたserving
 

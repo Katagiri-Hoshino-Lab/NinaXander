@@ -6,5 +6,6 @@ datasets==4.5.0
 numpy
 safetensors>=0.4.3
 huggingface_hub>=0.20
-# System (not pip): a LaTeX toolchain with lualatex and bibtex (TeX Live / TinyTeX) to build the paper,
-# including tikz, booktabs, and luatexja.
+# System (not pip): a pLaTeX toolchain with platex, pbibtex and dvipdfmx (TeX Live / TinyTeX) to build the papers
+# with the vendored IPSJ class paper/ipsj.cls (pLaTeX only), including tikz, booktabs, float, japanese-otf, and
+# ptex-fontmaps configured with `kanji-config-updmap-sys haranoaji`.

@@ -5,7 +5,8 @@
 #   ./reproduce.sh check                  validate structure and existing result data
 #   ./reproduce.sh tables                 rebuild normalized paper-facing CSV tables
 #   ./reproduce.sh map                    list every structured table and its provenance
-#   ./reproduce.sh paper                  rebuild paper/paper_ja.pdf
+#   ./reproduce.sh paper                  rebuild paper/paper_ja.pdf and paper/paper_en.pdf
+#                                         (IPSJ ipsj.cls: platex + pbibtex + dvipdfmx)
 #   ./reproduce.sh hf-check               validate all three Hugging Face release packages
 #   ./reproduce.sh hf-gpu-check [--yes]   submit two-GPU checks for both direction-best packages
 #   ./reproduce.sh gpu-eval [--yes]       submit all non-training evaluations
@@ -158,6 +159,10 @@ case "$MODE" in
       experiments/slurm/_common.sh
       experiments/slurm/submit.sh
       paper/paper_ja.tex
+      paper/ipsj.cls
+      paper/ipsjtech.sty
+      paper/ipsjunsrt.bst
+      paper/ipsjunsrt-e.bst
     )
     have_release=0
     [[ -d release/huggingface ]] && have_release=1
@@ -335,23 +340,36 @@ PY
 
   paper)
     cd "$ROOT"
+    # Both papers use the vendored IPSJ SIG Technical Report class (paper/ipsj.cls v4.1),
+    # which runs only under pLaTeX: platex -> pbibtex -> platex x2 -> dvipdfmx.
+    for tool in platex pbibtex dvipdfmx; do
+      command -v "$tool" >/dev/null 2>&1 || {
+        echo "MISSING: $tool (TeX Live pLaTeX toolchain; see paper/README.md)"
+        exit 1
+      }
+    done
     "$PYTHON" tools/make_layer_cka_figure.py \
       --table-dir "$TABLES" --out paper/fig_layer_cka.pdf
     "$PYTHON" tools/make_layer_cka_figure.py \
       --table-dir "$TABLES" --out paper/fig_layer_cka_en.pdf --lang en
     cd "$ROOT/paper"
     build_log="${TMPDIR:-/tmp}/ninaxander-paper-build.log"
-    lualatex -interaction=nonstopmode -halt-on-error paper_ja.tex >"$build_log" 2>&1
-    bibtex paper_ja >>"$build_log" 2>&1
-    lualatex -interaction=nonstopmode -halt-on-error paper_ja.tex >>"$build_log" 2>&1
-    lualatex -interaction=nonstopmode -halt-on-error paper_ja.tex >>"$build_log" 2>&1
+    : >"$build_log"
+    # Every step appends to the log; on failure, say which step failed and show the error.
+    run_tex() { "$@" >>"$build_log" 2>&1 || { echo "PAPER BUILD FAILED: $* (full log: $build_log)"; grep -nE '^!|Error' "$build_log" | tail -20; tail -20 "$build_log"; exit 1; }; }
+    run_tex platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_ja.tex
+    run_tex pbibtex -kanji=utf8 paper_ja
+    run_tex platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_ja.tex
+    run_tex platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_ja.tex
+    run_tex dvipdfmx paper_ja.dvi
     pages=$(pdfinfo paper_ja.pdf 2>/dev/null | awk '/^Pages:/{print $2}')
     echo "paper/paper_ja.pdf OK (${pages:-unknown} pages)"
     if [[ -f paper_en.tex ]]; then
-      lualatex -interaction=nonstopmode -halt-on-error paper_en.tex >>"$build_log" 2>&1
-      bibtex paper_en >>"$build_log" 2>&1
-      lualatex -interaction=nonstopmode -halt-on-error paper_en.tex >>"$build_log" 2>&1
-      lualatex -interaction=nonstopmode -halt-on-error paper_en.tex >>"$build_log" 2>&1
+      run_tex platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_en.tex
+      run_tex pbibtex -kanji=utf8 paper_en
+      run_tex platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_en.tex
+      run_tex platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_en.tex
+      run_tex dvipdfmx paper_en.dvi
       pages_en=$(pdfinfo paper_en.pdf 2>/dev/null | awk '/^Pages:/{print $2}')
       echo "paper/paper_en.pdf OK (${pages_en:-unknown} pages)"
     fi

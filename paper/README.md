@@ -4,26 +4,38 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-CN.md)
 
 The write-up of the shared-latent chimera work.
 
-- **[paper_ja.tex](paper_ja.tex)** — the paper (日本語, LaTeX / LuaTeX). The sole, complete write-up: abstract,
-  figures, tables, a reproducibility appendix and a bibliography. Every reported
+- **[paper_ja.tex](paper_ja.tex)** — the paper (日本語, pLaTeX, IPSJ SIG Technical Report format), the primary write-up: abstract,
+  figures, tables, reproduction information and metric definitions (now part of the Method section) and a bibliography. Every reported
   result has a normalized CSV representation in `../artifacts/metrics/tables/`; raw JSON/CSV remains under
-  `../artifacts/metrics/raw/`. (The earlier English `paper.tex` was retired.)
+  `../artifacts/metrics/raw/`.
+- **[paper_en.tex](paper_en.tex)** — the English mirror of `paper_ja.tex`. `../tools/check_en_number_parity.py`
+  requires every multi-digit and decimal number to match between the two sources (single-digit differences only warn).
 
-Build with `../reproduce.sh paper`, or directly:
+Build with `../reproduce.sh paper`, or directly (repeat with `paper_en` for the English mirror):
 
 ```bash
-lualatex paper_ja.tex &&
-bibtex paper_ja &&
-lualatex paper_ja.tex &&
-lualatex paper_ja.tex
+platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_ja.tex &&
+pbibtex -kanji=utf8 paper_ja &&
+platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_ja.tex &&
+platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_ja.tex &&
+dvipdfmx paper_ja.dvi
 ```
 
-Every figure is self-contained TikZ (no external image files). Every number is from the current **32-layer**
+Both papers use the IPSJ SIG Technical Report class (情報処理学会研究報告; `ipsj.cls` v4.1 with `ipsjtech.sty`,
+`ipsjunsrt.bst` for the Japanese paper and `ipsjunsrt-e.bst` for the English one), vendored in this directory from
+IPSJ's `ipsj_v4-1.zip` (UTF-8 edition, 2025-02-05). The class runs only under pLaTeX, so the build needs TeX Live's
+pLaTeX, pBibTeX and dvipdfmx, plus `japanese-otf` and `ptex-fontmaps` configured with
+`kanji-config-updmap-sys haranoaji` (dvipdfmx then embeds the Harano Aji fonts).
+
+Every figure except the layer-correspondence figure is self-contained TikZ (no external image files); `fig_layer_cka.pdf` and
+`fig_layer_cka_en.pdf` are generated from the tables by `../tools/make_layer_cka_figure.py` (`../reproduce.sh paper`
+regenerates them and also builds `paper_en.pdf`). Every number is from the current **32-layer**
 adapter (`SNAP_L32_final.pt`, step 415,000): held-out ρ_ctr 0.901 and
 AA/AB/BB/BA read-outs 0.695/0.559/0.711/0.590; the
 matched linearity probe (AB/BA non-linear fraction 13.4%/12.0%, best direct
 affine 0.487/0.535); full-set QA for AA/AB/BB/BA; measured KV
-(16.0 KiB/token/layer); equal-KV early exits; and pruned/unpruned serving and long-context domain shift. The best
+(16.0 KiB/token/layer); and long-context domain shift. The equal-KV early-exit baseline and the pruned/unpruned
+serving measurements remain in the tables but are not printed in the paper. The best
 measured cross-family configuration is `NinaXander-BA@4`: ARC-Easy 62.2, SciQ 69.2, five Transformer blocks,
 and 84.375% KV reduction. Its public-default status is explicitly reported as a post-hoc choice over eight
 cross-family path/switch configurations without an independent selection split. See

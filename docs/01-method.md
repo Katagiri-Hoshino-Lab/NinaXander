@@ -116,8 +116,9 @@ checkpoint selected by held-out A→B; it does not reselect a checkpoint after
 looking at B→A or BA QA.
 
 The remaining two cells, `NinaXander-AA@L` and `NinaXander-BB@L`, are
-same-family reconstruction controls. They use the same encoder/decoder
-interface at the same boundary but do not change model family. All four cells
+same-family reconstruction controls (they share the naming scheme but are not cross-family NinaXander models). They use the same encoder/decoder
+interface at the same boundary but do not change model family, so they isolate
+the loss of the encode–decode round trip rather than translation. All four cells
 are reported together in `paper_four_path_qa_accuracy.csv`.
 
 The current construction uses one family boundary and therefore one
@@ -146,11 +147,21 @@ experiment.
 - `A→A`/`B→B` as a *ceiling* on `B→A`/`A→B`, or either gap as a
   "price of sharing" — the targets occupy different spaces; the real
   reference ceiling is a directly supervised per-layer bridge.
+- `A→A`/`B→B` as isolating the decoder — they isolate the encode–decode
+  round trip; whether the reconstruction error comes from the encoder, the
+  latent normalization, the decoder, or the training-time noise is not isolated.
+- The α=0 intervention as evidence that nonlinearity is generally necessary —
+  it shows only that this jointly trained adapter cannot lose its residual-block
+  branches; in BA accuracy the separately fitted affine control differs little from the adapter (−3.4 to +2.0 points).
+- Post-hoc path/switch exploration as training-free — it avoids
+  per-configuration retraining only once the adapter is trained, and no total
+  training-cost advantage over pretraining a new hybrid or distillation is established.
 
 ## Why the adapter must be lightweight (load-bearing)
 
-NinaXander tests the hypothesis that matching layers of heterogeneous models share a semantic space after a *simple*
-transform. This makes adapter capacity a methodological constraint, not just an overfitting concern: a heavy adapter
+This project tests the hypothesis that, under favorable conditions, matching layers of heterogeneous models share a
+token-aligned representation that a *simple*, low-capacity transform can reach — not a general semantic space.
+This makes adapter capacity a methodological constraint, not just an overfitting concern: a heavy adapter
 (a deep/wide MLP or a large ResNet) can approximate an arbitrary map between the two spaces, so high AB/BA read-outs under a
 heavy adapter is **not** evidence for a shared space. Only a **light, low-capacity** map aligning the two spaces
 supports the hypothesis — and the cleanest capacity control is a *linear* map, which cannot fit an arbitrary
@@ -158,9 +169,12 @@ correspondence yet still reaches AB 0.487 and BA 0.535. Those matched
 linear-reachability measurements carry the shared-space claim.
 
 The reported latent is uncompressed (`z = d = 4096`). The lightweight
-argument is therefore about *capacity*, not width: the adapter is one
-zero-initialised residual block between two linear maps, so it begins as an
-exactly linear map and grows only the non-linearity it needs. Its 268.5M
+argument is therefore about *capacity*, not width: each of E and D is one
+zero-initialised residual block between two linear maps, so each begins
+training as a linear map, and any non-linearity is learned during training. A
+cross path such as `A→B = D_B(LN(E_A(·)))` passes through two such blocks with
+the non-affine LN between them, so the full cross map is not linear even at
+initialisation. Its 268.5M
 parameters are 1.9% of the 14.2B frozen weights. Report both
 cross-readouts *together with* the parameter count and architecture; either direction is evidence only when the
 map is correspondingly constrained.
@@ -168,7 +182,12 @@ map is correspondingly constrained.
 How near-linear it remains **after** training is itself measurable, and the
 answer retracts the "near-linear" framing: on identical real residual
 rows, best affine imitations explain **86.6%** of AB and **88.0%** of BA
-adapter output. Thus 13.4% / 12.0% is irreducibly non-linear. Removing the
-same trained residual-MLP branch collapses both cross read-outs (AB
-0.56→−0.41, BA 0.58→−0.30). The adapter must therefore be reported as
-low-*capacity*, never as "near-linear."
+adapter output. Thus 13.4% / 12.0% is irreducibly non-linear, and the adapter
+must therefore be reported as low-*capacity*, never as "near-linear." Scaling
+the residual-MLP branches of the same trained adapter together to α=0 (AB
+passes through the blocks of E_A and D_B, BA through those of E_B and D_A)
+collapses both cross read-outs (AB 0.56→−0.41, BA 0.58→−0.30) and downstream
+accuracy on both paths. This is a property of removing only the branches from
+a jointly trained map; it does not show that nonlinearity is generally
+necessary, and in BA accuracy the separately fitted affine control differs
+little from the adapter (−3.4 to +2.0 points), so the adapter does not consistently outperform it.

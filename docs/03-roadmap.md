@@ -14,12 +14,14 @@ Raven ships as a BlinkDL `.pth` → converted with a one-off helper that is not 
 `save_pretrained` for transformers 5.x), then re-saved **fp16** (fp32 was 28GB and OOM'd). 7B×2 won't co-load on a
 32GB V100, so residuals are extracted **one model at a time** to a per-node cache. Its location and capacity are
 site settings (`NINAXANDER_TRAIN_CACHE`); the reported 32GB probe node had only 23GB of shared memory.
-Results: see [02-findings.md](02-findings.md). The shared space is real — the reported adapter is
+Results: see [02-findings.md](02-findings.md). A shared space of token-aligned representations exists under favorable conditions (not a
+general semantic space) — the reported adapter is
 z=4096 (no compression), 268.5M params, σ=0.4, **415k steps** (jobs 1832 → 1837), residuals captured for **all 32
 blocks by forward hook**, reaching ρ_ctr 0.901, AA/AB/BB/BA = 0.695/0.559/0.711/0.590. Both AB≤BB and BA≤AA
-hold at all 32 layers, so both cross-readouts are **reconstruction-bound**, not alignment-bound; what limits the self-maps is unresolved (the earlier draft's noise
-ceiling 1/(1+σ²) ≈ 0.862 was the *noisy*-eval value — clean-z eval gives ≈0.98, so noise is not the binding
-constraint; a σ sweep is needed).
+hold at all 32 layers: even under high latent alignment, same-family reconstruction is already imperfect, and both
+cross-readouts **fall below it at every layer**. Whether that error comes from the encoder, the latent normalization,
+the decoder, or the training-time noise is not isolated, and what limits the self-maps is unresolved (whether the
+noise σ sets a ceiling is unknown; a σ sweep would test it).
 
 ## Done since: the fair retrain, both chimera paths, controls, and deployable paths
 
@@ -37,8 +39,11 @@ reduction; on SciQ the combined non-dominated sequence is Pythia → AB@4 →
 BA@24 → BA@4 → RWKV (post-hoc, one-task frontier).
 
 Two further characterisations landed: the adapter is **not near-linear** —
-13.4% of AB and 12.0% of BA output is irreducibly non-linear, and removing the
-same nonlinear branch collapses both read-outs. Translation is also
+13.4% of AB and 12.0% of BA output is irreducibly non-linear, and setting this
+jointly trained adapter's residual-block branches to α=0 (those of E_A and D_B
+on AB, of E_B and D_A on BA) collapses both read-outs and downstream accuracy.
+That does not show that nonlinearity is generally necessary: in BA accuracy the separately
+fitted affine control differs little from the adapter (−3.4 to +2.0 points), so the adapter does not consistently outperform it. Translation is also
 **domain-specific in both paths**: at context 512, moving from Alpaca to
 WikiText changes AB@4 perplexity 6.40→93.87 and BA@4 3.85→45.00, while the
 parents degrade much less. This is domain shift, not a context-length limit.
@@ -67,15 +72,16 @@ numerical gate, so reported BA QA remains batch 1.
 
 ## Open questions
 
-- **What limits self-reconstruction?** At 7B, with clean-z eval, the
-  noise-implied ceiling is ≈0.98 (not 0.862 — that is the
-  *noisy*-eval value), so B→B 0.711 is far below it and **noise is not the binding constraint**. What is remains
-  **open** — a matched σ sweep {0, 0.1, 0.2, 0.4, 0.8} on the current
-  32-layer setup is the decisive experiment.
+- **What limits self-reconstruction?** At 7B, B→B remains at 0.711 even though width/rank is unlikely to be a
+  strong constraint (z = d, and the non-affine LN drops only the per-token mean and norm). What limits it remains
+  **open**: the error is not isolated among the encoder, the latent normalization, the decoder, and the
+  training-time noise, and whether the noise σ sets a ceiling is unknown. A matched σ sweep {0, 0.1, 0.2, 0.4, 0.8} on the current
+  32-layer setup tests the noise candidate directly.
 - **Cost of the cross-reconstruction target** — requires matched multi-seed
   current-scale runs; no estimate is reported.
 - **Can the translation be made near-lossless?** Cross-map R² remains a plausible lever, but the current controls
-  do not assign the whole chimera cost to it: decoder reconstruction and front-parent capability are also present.
+  do not assign the whole chimera cost to it: the encode–decode round-trip loss and front-parent capability are
+  also present.
   Levers not yet tried at scale include richer/deeper decoders, a
   vocabulary-anchored closed-form initialisation, and per-layer rather than
   shared decoders.

@@ -18,14 +18,15 @@ RavenはBlinkDL `.pth`として配布されるため、同梱していない一�
 cacheの場所と容量はサイト設定（`NINAXANDER_TRAIN_CACHE`）であり、報告した32GB probe nodeの
 shared memoryは23GBしかありませんでした。
 
-結果は[02-findings.md](02-findings.md)を参照してください。shared spaceは実在します。
+結果は[02-findings.md](02-findings.md)を参照してください。好条件下ではtoken対応表現のshared spaceが存在します
+（一般的なsemantic spaceではありません）。
 報告adapterはz=4096（圧縮なし）、268.5M parameter、σ=0.4、**415k step**
 （job 1832 → 1837）で、forward hookにより**全32 block**の残差を取得し、
 ρ_ctr 0.901、AA/AB/BB/BA = 0.695/0.559/0.711/0.590へ到達しました。
-全32層でAB≤BB、BA≤AAであるため、両cross-readoutはalignmentではなく
-**reconstruction-bound**です。self-mapを制約する要因は未解決です。以前のdraftにあった
-noise ceiling 1/(1+σ²) ≈ 0.862は*noisy*-eval値で、clean-z evalでは約0.98です。
-noiseはbinding constraintではなく、σ sweepが必要です。
+全32層でAB≤BB、BA≤AAです。高いlatent alignmentのもとでもsame-family reconstructionの段階で
+すでに誤差が残り、両cross-readoutは**全層でそれを下回ります**。その誤差がencoder、latent正規化、
+decoder、学習時noiseのいずれに由来するかは切り分けておらず、self-mapを制約する要因は未解決です。
+noise σがceilingを定めているかは不明であり、σ sweepで検証できます。
 
 ## その後に完了：公平な再学習、両chimera path、対照、deploy可能path
 
@@ -41,8 +42,10 @@ BA@4は両taskでRWKVと統計的に同等、両pathともPythiaを下回りま�
 Pythia → AB@4 → BA@24 → BA@4 → RWKVです（post-hocな単一task frontier）。
 
 さらに2つを特性評価しました。adapterは**near-linearではなく**、
-AB出力の13.4%、BA出力の12.0%は不可約なnon-linear成分で、同じnonlinear branchを除くと
-両read-outが崩壊します。translationは**両pathでdomain-specific**です。context 512で
+AB出力の13.4%、BA出力の12.0%は不可約なnon-linear成分です。同時に学習したこのadapterの
+residual-block branchをα=0にすると（ABではE_AとD_Bの、BAではE_BとD_Aのblock）、両read-outと
+下流精度が崩壊します。ただしこれはnon-linearityが一般に必要であることを示さず、BAの精度では別途fitした
+affine対照とadapterの差は小さく（−3.4〜+2.0点）、adapterが一貫して上回るわけではありません。translationは**両pathでdomain-specific**です。context 512で
 AlpacaからWikiTextへ移ると、AB@4 perplexityは6.40→93.87、BA@4は3.85→45.00となり、
 親モデルの劣化ははるかに小さいです。これはcontext-length limitではなくdomain shiftです。
 
@@ -71,14 +74,15 @@ AB@4との差は0.45 pointだけで独立selection splitはありません。こ
 
 ## 未解決問題
 
-- **self-reconstructionを制約するものは何か。** 7Bのclean-z evalでnoise由来ceilingは約0.98です
-  （0.862は*noisy*-eval値）。B→B 0.711は大幅に下回るため、
-  **noiseはbinding constraintではありません**。原因は**未解決**であり、
-  現行32層setup上の対応σ sweep {0, 0.1, 0.2, 0.4, 0.8}が決定的な実験です。
+- **self-reconstructionを制約するものは何か。** 7Bでは、widthやrankが強い制約とは考えにくい
+  （z = dであり、non-affine LNが落とすのはtokenごとの平均とnormだけ）にもかかわらず、B→Bは0.711に留まります。
+  原因は**未解決**です。誤差はencoder、latent正規化、decoder、学習時noiseのいずれに由来するか切り分けておらず、
+  noise σがceilingを定めているかも不明です。
+  現行32層setup上の対応σ sweep {0, 0.1, 0.2, 0.4, 0.8}はnoise候補を直接検証します。
 - **cross-reconstruction targetのcost。** 現行scaleで対応するmulti-seed runが必要で、
   推定値は報告していません。
 - **translationをnear-losslessにできるか。** cross-map R²は改善leverの候補ですが、
-  現行対照だけではchimera cost全体をそこへ帰属できません。decoder reconstructionと
+  現行対照だけではchimera cost全体をそこへ帰属できません。encodeとdecodeの往復による損失と
   front-parent capabilityも含まれます。まだscaleを揃えて試していないleverには、
   より豊かで深いdecoder、vocabulary-anchored closed-form initialization、
   shared decoderではなくlayer別decoderがあります。

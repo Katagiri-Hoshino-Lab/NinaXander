@@ -141,9 +141,10 @@ def main():
     best_step = max(curve, key=lambda s: float(curve[s]["eval_a_to_b_r2"]))
     check(
         "appendix run length",
-        f"${comma(last_step)}$ 反復走行（報告チェックポイントは保留 $A\\!\\to\\!B$ 最良の ${comma(best_step)}$ 反復）",
+        f"${comma(last_step)}$ 反復を走らせ，保留 $A\\!\\to\\!B$ が最良となる "
+        f"${comma(best_step)}$ 反復目を報告する",
     )
-    check("reported checkpoint", f"最深点（${comma(best_step)}$ 反復）のチェックポイント")
+    check("reported checkpoint", f"最深点，すなわち ${comma(best_step)}$ 反復目のチェックポイント")
     # The paper no longer prints the common-mode training-dynamics analysis, the
     # equal-KV early-exit baseline, or the pruned-runtime / serving-timing figures,
     # so the fragments that pinned them are gone. The underlying tables are still
@@ -163,11 +164,12 @@ def main():
     n_last = sum(1 for t, _ in best_target.values() if t == 31)
     check(
         "CKA means",
-        f"対角平均 ${fmt(sum(diag) / len(diag), 2)}$ 対 非対角平均 ${fmt(sum(off) / len(off), 2)}$",
+        f"対角平均は ${fmt(sum(diag) / len(diag), 2)}$，非対角平均は ${fmt(sum(off) / len(off), 2)}$",
     )
     check(
         "CKA argmax counts",
-        f"${n_diag}$ 行にすぎない（最類似は層 $0$ が ${n_zero}$ 行，最終層が ${n_last}$ 行を占める）",
+        f"$32$ 行中 ${n_diag}$ 行にすぎない。最類似の列は層 $0$ が ${n_zero}$ 行，"
+        f"最終層が ${n_last}$ 行を占める",
     )
     lin_diag = [float(r["best_linear_r2"]) for r in corr if r["source_layer"] == r["target_layer"]]
     lin_off = [float(r["best_linear_r2"]) for r in corr if r["source_layer"] != r["target_layer"]]
@@ -248,16 +250,18 @@ def main():
     d_arc = pair_row("arc_easy", "A_to_B@4", "rwkv")
     check(
         "claim (d) AB@4 vs RWKV",
-        f"RWKV を ${signed(fmt(float(d_sciq['accuracy_difference']) * 100, 1))}$ 点 （$p{{=}}{fmt_p(d_sciq['mcnemar_p'])}$）上回る一方，"
-        f"ARC-Easy では ${signed(fmt(float(d_arc['accuracy_difference']) * 100, 1))}$ 点（$p{{=}}{fmt_p(d_arc['mcnemar_p'])}$）",
+        f"RWKV を ${signed(fmt(float(d_sciq['accuracy_difference']) * 100, 1))}$ 点上回り，"
+        f"$p{{=}}{fmt_p(d_sciq['mcnemar_p'])}$ となる一方，ARC-Easy では "
+        f"${signed(fmt(float(d_arc['accuracy_difference']) * 100, 1))}$ 点，"
+        f"$p{{=}}{fmt_p(d_arc['mcnemar_p'])}$ となる",
     )
     d2_arc = pair_row("arc_easy", "B_to_A@4", "rwkv")
     d2_sciq = pair_row("sciq", "B_to_A@4", "rwkv")
     check(
         "claim (d) BA@4 vs RWKV",
-        f"ARC ${fmt(float(d2_arc['accuracy_a']) * 100, 1)}$ 対 ${fmt(float(d2_arc['accuracy_b']) * 100, 1)}$"
-        f"（$p{{=}}{fmt_p(d2_arc['mcnemar_p'])}$），SciQ ${fmt(float(d2_sciq['accuracy_a']) * 100, 1)}$ 対 "
-        f"${fmt(float(d2_sciq['accuracy_b']) * 100, 1)}$（$p{{=}}{fmt_p(d2_sciq['mcnemar_p'])}$）",
+        f"ARC ${fmt(float(d2_arc['accuracy_a']) * 100, 1)}$ 対 ${fmt(float(d2_arc['accuracy_b']) * 100, 1)}$ で "
+        f"$p{{=}}{fmt_p(d2_arc['mcnemar_p'])}$，SciQ ${fmt(float(d2_sciq['accuracy_a']) * 100, 1)}$ 対 "
+        f"${fmt(float(d2_sciq['accuracy_b']) * 100, 1)}$ で $p{{=}}{fmt_p(d2_sciq['mcnemar_p'])}$",
     )
 
     four = load(table_dir, "paper_four_path_qa_accuracy.csv")
@@ -292,8 +296,10 @@ def main():
     l4_sciq = pair_row("sciq", "B_to_A@4", "A_to_B@4")
     check(
         "BA vs AB shallow",
-        f"ARC で ${signed(fmt(float(l4_arc['accuracy_difference']) * 100, 1))}$ 点（$p{{=}}{fmt_p(l4_arc['mcnemar_p'])}$）だが "
-        f"SciQ で ${signed(fmt(float(l4_sciq['accuracy_difference']) * 100, 1))}$ 点（$p{{=}}{fmt_p(l4_sciq['mcnemar_p'])}$）",
+        f"ARC で ${signed(fmt(float(l4_arc['accuracy_difference']) * 100, 1))}$ 点，"
+        f"$p{{=}}{fmt_p(l4_arc['mcnemar_p'])}$ だが，SciQ では "
+        f"${signed(fmt(float(l4_sciq['accuracy_difference']) * 100, 1))}$ 点，"
+        f"$p{{=}}{fmt_p(l4_sciq['mcnemar_p'])}$",
     )
 
     qa = load(table_dir, "paper_cross_family_qa_accuracy.csv")
@@ -323,8 +329,8 @@ def main():
     }
     check(
         "sum-scoring robustness note",
-        f"\\RtoPL{{4}} は SciQ ${fmt(sum_acc[('A_to_B@4', 'sciq')] - sum_acc[('rwkv', 'sciq')], 1)}$ 点，"
-        f"\\PtoRL{{4}} は ARC ${fmt(sum_acc[('B_to_A@4', 'arc_easy')] - sum_acc[('rwkv', 'arc_easy')], 1)}$ 点／"
+        f"\\RtoPL{{4}} は SciQ ${fmt(sum_acc[('A_to_B@4', 'sciq')] - sum_acc[('rwkv', 'sciq')], 1)}$ 点であり，"
+        f"\\PtoRL{{4}} は ARC ${fmt(sum_acc[('B_to_A@4', 'arc_easy')] - sum_acc[('rwkv', 'arc_easy')], 1)}$ 点，"
         f"SciQ ${fmt(sum_acc[('B_to_A@4', 'sciq')] - sum_acc[('rwkv', 'sciq')], 1)}$ 点",
     )
     invariant(
@@ -350,10 +356,14 @@ def main():
         f"ARC-Easy ${fmt(float(ba4['arc_easy_accuracy_norm']) * 100, 1)}\\%$，"
         f"SciQ ${fmt(float(ba4['sciq_accuracy_norm']) * 100, 1)}\\%$ を保つ",
     )
-    check("RWKV state size", f"層あたり ${fmt(float(ba4['rwkv_state_kib_per_layer']), 0)}$ KiB（$5$ 状態ベクトル")
+    check(
+        "RWKV state size",
+        f"層あたり ${fmt(float(ba4['rwkv_state_kib_per_layer']), 0)}$ KiB である。"
+        "この値は，参照実装が持つ $5$ 状態ベクトル",
+    )
     check(
         "table5 pythia row",
-        f"& ${fmt(float(parent_b['kv_kib_per_token']), 0)}$ KiB & ${fmt(float(parent_b['kv_gib_at_context']), 2)}$ GiB & --- & "
+        f"& ${fmt(float(parent_b['kv_kib_per_token']), 0)}$ KiB & ${fmt(float(parent_b['kv_gib_at_context']), 2)}$ GiB & $0\\%$ & "
         f"{fmt(float(parent_b['arc_easy_accuracy_norm']) * 100, 1)} / {fmt(float(parent_b['sciq_accuracy_norm']) * 100, 1)}",
     )
     check(
@@ -433,14 +443,14 @@ def main():
         }
         check(
             "leakage unexposed-parent contrast",
-            f"（ARC で ${signed(fmt(contrast[('arc_easy', 'rwkv')], 1))}$ 点，"
-            f"SciQ で ${signed(fmt(contrast[('sciq', 'rwkv')], 1))}$ 点）",
+            f"変化は ARC で ${signed(fmt(contrast[('arc_easy', 'rwkv')], 1))}$ 点，"
+            f"SciQ で ${signed(fmt(contrast[('sciq', 'rwkv')], 1))}$ 点",
         )
         skipped = leak.get("unsearched_short_questions", {})
         if skipped:
             check(
                 "leakage unsearched short questions",
-                f"（ARC-Easy ${skipped['arc_easy']}$ 問，SciQ ${skipped['sciq']}$ 問）",
+                f"その内訳は ARC-Easy ${skipped['arc_easy']}$ 問と SciQ ${skipped['sciq']}$ 問",
             )
         invariant(
             "leakage does not overturn any comparison",
@@ -461,9 +471,10 @@ def main():
         headline_windows = int(train_cfg["held_out_windows"])
         check(
             "held-out set sizes",
-            f"学習時評価は ${comma(headline_windows)}$ 窓 ${{\\times}}\\,112={comma(headline_windows * 112)}$ トークン，"
-            f"層別分析とシャッフル対照（\\S\\ref{{sec:space}}）は ${comma(layer_windows)}$ 窓 "
-            f"${{\\times}}\\,112={comma(layer_windows * 112)}$ トークン",
+            f"学習時評価には ${comma(headline_windows)}$ 窓，すなわち "
+            f"${comma(headline_windows * 112)}$ トークンを用いる。"
+            f"層別分析とシャッフル対照には ${comma(layer_windows)}$ 窓，すなわち "
+            f"${comma(layer_windows * 112)}$ トークンを用いる",
         )
         adapter_params = safetensors_param_count(adapter_pkgs[0] / "model.safetensors")
         parent_bytes = sum(
@@ -471,10 +482,11 @@ def main():
             for side in ("source", "target")
         )
         parent_params = parent_bytes / 2
-        check("parents total params", f"親モデルの合計 ${fmt(parent_params / 1e9, 1)}$B パラメータ")
+        check("parents total params", f"親モデルの合計 ${fmt(parent_params / 1e9, 2)}$B パラメータ")
         check(
             "adapter params and share",
-            f"アダプタは ${fmt(adapter_params / 1e6, 1)}$M（${fmt(adapter_params / parent_params * 100, 1)}\\%$）",
+            f"アダプタは ${fmt(adapter_params / 1e6, 1)}$M であり，"
+            f"その比率は ${fmt(adapter_params / parent_params * 100, 1)}\\%$",
         )
     else:
         # release/ is gitignored: a fresh public checkout has no staged packages, so the two

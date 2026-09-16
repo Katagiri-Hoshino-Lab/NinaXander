@@ -10,7 +10,7 @@ Tulu-Pythia-6.9B模型对、step-415,000的forward-hook适配器，以及通过
 
 报告适配器采用无压缩潜空间（`z = d = 4096`），公平配对全部32个块。
 
-配置为`z = d = 4096`（无压缩）、一个零初始化ResBlock（hidden 4096）、σ=0.4、
+配置为`z = d = 4096`（无压缩）、encoder与decoder各含一个零初始化ResBlock（hidden 4096）、σ=0.4、
 N/layer=228,000、4张GPU上batch 4096、lr 1e-3并按plateau衰减至1e-5。
 残差通过**全部32个块的forward hook**捕获，而非`hidden_states`。
 训练跨越两个walltime周期（作业1832 → 1837），运行至**416,000步**时因计算资源额度结束而停止；所有报告数值均使用held-out A→B最优的**step 415,000**检查点。
@@ -26,12 +26,15 @@ N/layer=228,000、4张GPU上batch 4096、lr 1e-3并按plateau衰减至1e-5。
 | f（token-varying energy fraction） | 0.3501 |
 | ρ_raw | 0.9654 |
 
-关键发现是成对的次序：**ρ_ctr 0.901 > B→B 0.711 > A→B 0.559**，
-以及**ρ_ctr 0.901 > A→A 0.695 > B→A 0.590**。在全部32层中，
+关键发现是成对的次序：**B→B 0.711 > A→B 0.559**，
+以及**A→A 0.695 > B→A 0.590**，此时centered latent alignment为**ρ_ctr 0.901**
+（ρ_ctr是相关系数，与这些R²不在同一尺度上，不能直接比较）。在全部32层中，
 AB均低于使用同一B decoder的BB self-map，BA均低于使用同一A decoder的AA self-map。
-**稀缺的不是对齐，而是解码重构。**
+**即使latent alignment很高，同族重构阶段也已存在误差，两种cross read-out又进一步低于它；
+该误差来自encoder、latent归一化、decoder还是训练时noise，尚未分离。**
 
-**限制两种self-map的因素仍未解决。** decoder被训练为从z+ξ、ξ~N(0,σ²)重构，
+**限制两种self-map的因素仍未解决。** latent与残差等宽，非仿射LN每个token只去掉均值和范数两个自由度，
+因此宽度或秩不太可能构成强约束。decoder被训练为从z+ξ、ξ~N(0,σ²)重构，
 因此最佳系数缩小为1/(1+σ²)；但1/(1+σ²)≈0.862是该系数在*noisy*输入上评估的R²，
 而本研究在**clean z（ξ=0）**上评估。此时scalar-linear ceiling为
 1−(σ²/(1+σ²))² ≈ **0.98**，并已通过数值确认。两种self-map都远低于noise ceiling，
@@ -58,7 +61,8 @@ AA 0.6941→0.6950、BB 0.7106→0.7112），因此这是**渐近平台而非严
 
 实测而非假定（`kvcache_measure.py`，作业1809）：Tulu-Pythia每token每层缓存
 **16.0 KiB**，32层共512 KiB/token，与2·L·d·2字节完全一致。
-替代它的RWKV recurrent state为**每层40 KiB，且不随序列长度变化**。
+替代它的RWKV recurrent state为**每层64 KiB，且不随序列长度变化**
+（按reference实现计算：5个state向量中2个为fp16、3个为fp32）。
 
 AB保留`31−L`个Transformer suffix块，BA保留`L+1`个Transformer prefix块。
 因此实测内存/准确率表从一开始就包含两条路径：
@@ -113,8 +117,8 @@ ridge 1e-3·tr(XᵀX)/(d+1) ≈ 50）：
 | AB | 0.558 | 0.866 | **13.4%** | 0.490 | 0.487 |
 | BA | 0.576 | 0.880 | **12.0%** | 0.516 | 0.535 |
 
-由此得到两点。（1）“适配器从严格线性映射开始”只是*初始化*性质
-（ResBlock第二个矩阵为zero-init）；415k步后的映射明显非线性，因此**撤回**“near-linear”表述。
+由此得到两点。（1）“E与D各自从线性映射开始学习”只是*初始化*性质
+（各ResBlock第二个矩阵为zero-init；由于两者之间有非仿射LN，整个cross map即使在初始化时也并非严格线性）；415k步后的映射明显非线性，因此**撤回**“near-linear”表述。
 （2）最佳*direct* affine map仍达到AB 0.487、BA 0.535。它们是无法拟合任意对应关系的
 低容量映射，所以共享空间论点由这些direct-affine baseline承担，而不是重型适配器。
 与适配器的差距为AB +0.071、BA +0.041。
@@ -140,8 +144,9 @@ BA差异较小，有时甚至改变符号。这些跨映射比较只是描述性
   更好的父模型在ctx 2048仍为8.27，因此问题不是上下文长度限制，BA也未解决domain问题。
 - **域内affine对照是描述性的，不是干净的非线性ablation。** WikiText lin@8 CE从
   ctx 512 → 2048的5.65升至6.28，而adapter@8从4.74变为4.72；但两个映射的objective和
-  training data不同，不能据此把原因归于适配器非线性。结果7中匹配的同一适配器α干预，
-  才是AB和BA上的干净证据。
+  training data不同，不能据此把原因归于适配器非线性。结果7中匹配的同一适配器α干预
+  在AB和BA上消除了这一混杂，但它显示的也只是从这个联合训练的适配器中移除branch时的性质，
+  并不表明非线性普遍必要。
 
 这为两个方向的内存收益（结果2）划定范围：KV节省真实存在，但只适用于与训练domain相似的输入。
 
@@ -164,12 +169,13 @@ AB和BA评估器以完全相同的题目顺序运行**完整**ARC-Easy（2376）
 | SciQ @24 | 57.9 | 51.1 | 70.1 | 69.9 |
 
 - **每个AB和BA切换点在两个任务上都显著低于更强的Pythia父模型。**
-- **与较弱父模型的关系依赖路径和任务。** AB@4在SciQ上超过RWKV（+3.9，p=0.019），
+- **与较弱父模型的关系依赖路径和任务。** AB@4在SciQ上超过RWKV（+3.9，p=0.018），
   但在ARC上更差（−2.2，p=0.042）。没有BA切换点显著超过RWKV；BA@4在
   ARC（+0.4，p=0.66）和SciQ（+2.2，p=0.14）上都持平。
-- **同族arm不是普遍可加的“decoder cost”。** 对B suffix，BB低于Pythia，
+- **同族arm不是普遍可加的“encode–decode往返cost”。** 对B suffix，BB低于Pythia，
   AB又比BB低3–19个百分点。对A suffix，深层BA反而高于AA：L=16/24时，
-  ARC高+2.7/+7.4，SciQ高+8.2/+12.0个百分点。AA/BB隔离decoder通路，
+  ARC高+2.7/+7.4，SciQ高+8.2/+12.0个百分点。AA/BB隔离encode–decode往返造成的损失；
+  该损失在BB上于所有切换层的两个任务中都显著体现在下游准确率上，在AA上仅在L=16/24时于两个任务中都显著。
   但跨族差异同时改变prefix父模型，因此不能解释为纯translation error。
 - **深度效应依赖路径。** AB随L单调下降，而BA在L=16/24恢复，
   比同层AB高8.9–18.8个百分点。仅凭local cross-readout R²不能预测端到端排序。
@@ -188,12 +194,14 @@ AB和BA评估器以完全相同的题目顺序运行**完整**ARC-Easy（2376）
 因此ρ_ctr=0.90是适配器在所选同层对上**学习得到的**对齐，而不是内在逐层对应。
 这与将论点从“共享*语义*空间”收窄为“在匹配条件下可恢复的token级表征对应关系”一致。
 
-## 结果7 · 同一个nonlinear branch支撑AB与BA read-out
+## 结果7 · 移除适配器的nonlinear branch会使AB与BA read-out崩溃
 
 结果3的linear-map比较使用了*单独拟合*的线性映射（objective/data/layer-set均不同），
 可能存在混杂。`cross_family_mlp_intervention.py`和两个标准QA评估器消除了这一问题：
 它们用α缩放**同一个已训练适配器**唯一的非线性——ResBlock branch
-fc2(GELU(fc1(·)))。α=1为完整模型；α=0使用*完全相同的weight/layer/row*，只禁用该branch。
+fc2(GELU(fc1(·)))。α=1为完整模型；α=0使用*完全相同的weight/layer/row*，只禁用这些branch。
+AB经过E_A与D_B的ResBlock，BA经过E_B与D_A的ResBlock，因此两条路径并不共用同一个branch；
+E与D各自是夹在两个Linear之间的一个零初始化ResBlock（一条cross路径经过两个），α同时缩放全部这些branch。
 表征sweep与两条完整、逐题配对QA路径共同存储：
 
 | 路径 / α | 0 | 0.25 | 0.5 | 0.75 | 1 |
@@ -214,9 +222,11 @@ fc2(GELU(fc1(·)))。α=1为完整模型；α=0使用*完全相同的weight/laye
 
 branch在**AB贡献+11.1至+39.6个百分点**，在**BA贡献+11.2至+36.6个百分点**；
 全部16个逐题McNemar检验均有p<2e-9。由此得到两点：（1）两条α sweep都**非单调**
-（0.25比0更差），说明branch magnitude是关键，而非小修正。（2）每个适配器自身的裸linear skeleton
+（0.25比0更差），说明缩小branch时read-out并不会平滑退化。（2）每个适配器自身的裸linear skeleton
 （AB −0.41、BA −0.30）比单独拟合的direct affine map（AB 0.487、BA 0.535）更差：
 外围Linear是为配合ResBlock训练的，移除它会使两条路径崩溃。
+但这只是从这个联合训练的适配器中移除branch时的性质，并不表明非线性普遍必要；
+至少在BA准确率上，单独拟合的affine对照与适配器的差距很小（−3.4至+2.0分，结果3），适配器并未一致地更优。
 
 ## 结果8 · 等KV Transformer baseline与真正剪枝的serving
 
