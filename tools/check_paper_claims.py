@@ -98,14 +98,18 @@ def main():
         rep["latent_alignment_f"],
     )
 
-    check("four-path headline", f"{fmt(aa, 3)}/{fmt(ab, 3)}/{fmt(bb, 3)}/{fmt(ba, 3)}")
-    check("rho vs raw", f"$\\rho_{{\\mathrm{{ctr}}}}$ が ${fmt(rho, 3)}$ であるのに対し生の相関は ${fmt(raw_corr, 3)}$ を示し")
+    check("cross read-out headline", f"$A\\!\\to\\!B$ で ${fmt(ab, 3)}$，$B\\!\\to\\!A$ で ${fmt(ba, 3)}$ に達し")
+    check("self read-out headline", f"$A\\!\\to\\!A\\ {fmt(aa, 3)}$，$B\\!\\to\\!B\\ {fmt(bb, 3)}$ は")
+    check(
+        "rho vs raw",
+        f"$\\rho_{{\\mathrm{{raw}}}}$ は ${fmt(raw_corr, 3)}$ であり，中心化相関 ${fmt(rho, 3)}$ より高い",
+    )
     check(
         "common-mode identity",
         f"$(1{{-}}{fmt(f_var, 3)})+{fmt(f_var, 3)}\\times{fmt(rho, 3)}={fmt(raw_corr, 3)}$",
     )
-    check("deepest f", f"最深点の $f$ は ${fmt(f_var, 3)}$")
-    check("constant share", f"潜在の持つエネルギーの ${fmt((1 - f_var) * 100, 0)}\\%$ は")
+    check("deepest f", f"最終チェックポイントの $f$ は ${fmt(f_var, 3)}$ であり")
+    check("constant share", f"潜在の二乗ノルムの ${fmt((1 - f_var) * 100, 0)}\\%$ は")
     invariant(
         "identity residual",
         abs((1 - f_var) + f_var * rho - raw_corr) < 1e-3,
@@ -129,27 +133,25 @@ def main():
     )
     check(
         "shuffle collapse readouts",
-        f"$A\\!\\to\\!B$ は ${fmt(float(mean_all['A->B']), 3)}\\!\\to\\!{fmt(float(mean_all['A->B_shuf']), 3)}$，"
-        f"$B\\!\\to\\!A$ は ${fmt(float(mean_all['B->A']), 3)}\\!\\to\\!{fmt(float(mean_all['B->A_shuf']), 3)}$ へ崩壊する",
+        f"$A\\!\\to\\!B$ で ${fmt(float(mean_all['A->B']), 3)}\\!\\to\\!{fmt(float(mean_all['A->B_shuf']), 3)}$，"
+        f"$B\\!\\to\\!A$ で ${fmt(float(mean_all['B->A']), 3)}\\!\\to\\!{fmt(float(mean_all['B->A_shuf']), 3)}$ へ低下する",
     )
     local_ab = "/".join(fmt(float(per_layer[l]["A->B"]), 3) for l in (4, 8, 16, 24))
     local_ba = "/".join(fmt(float(per_layer[l]["B->A"]), 3) for l in (4, 8, 16, 24))
-    check("local per-layer readouts", f"\\RtoP{{}} ${local_ab}$，\\PtoR{{}} ${local_ba}$")
+    check("local per-layer readouts", f"\\RtoP{{}} で ${local_ab}$，\\PtoR{{}} で ${local_ba}$")
 
     curve = {int(r["step"]): r for r in load(table_dir, "paper_training_curve.csv")}
     last_step = max(curve)
     best_step = max(curve, key=lambda s: float(curve[s]["eval_a_to_b_r2"]))
     check(
-        "appendix run length",
-        f"${comma(last_step)}$ 反復を走らせ，保留 $A\\!\\to\\!B$ が最良となる "
-        f"${comma(best_step)}$ 反復目を報告する",
+        "training run length",
+        f"${comma(last_step)}$ 反復を実行し，評価用データの $A\\!\\to\\!B$ が最良となった "
+        f"${comma(best_step)}$ 反復目",
     )
-    check("reported checkpoint", f"最深点，すなわち ${comma(best_step)}$ 反復目のチェックポイント")
-    # The paper no longer prints the common-mode training-dynamics analysis, the
-    # equal-KV early-exit baseline, or the pruned-runtime / serving-timing figures,
-    # so the fragments that pinned them are gone. The underlying tables are still
-    # produced and validated by tools/validate_results.py; re-add the checks here if
-    # those paragraphs come back.
+    check("reported checkpoint", f"${comma(best_step)}$ 反復目のチェックポイントを以降のすべての評価に用いる")
+    # The paper no longer prints the common-mode training-dynamics analysis, so the fragments
+    # that pinned it are gone. The equal-KV early-exit baseline and the serving measurements
+    # are printed again and are pinned further below.
 
     corr = load(table_dir, "paper_layer_correspondence.csv")
     diag = [float(r["linear_cka"]) for r in corr if r["source_layer"] == r["target_layer"]]
@@ -164,11 +166,11 @@ def main():
     n_last = sum(1 for t, _ in best_target.values() if t == 31)
     check(
         "CKA means",
-        f"対角平均は ${fmt(sum(diag) / len(diag), 2)}$，非対角平均は ${fmt(sum(off) / len(off), 2)}$",
+        f"対角要素の平均は ${fmt(sum(diag) / len(diag), 2)}$，それ以外の層の組の平均は ${fmt(sum(off) / len(off), 2)}$",
     )
     check(
         "CKA argmax counts",
-        f"$32$ 行中 ${n_diag}$ 行にすぎない。最類似の列は層 $0$ が ${n_zero}$ 行，"
+        f"$32$ 行中 ${n_diag}$ 行にすぎない．最も類似する列は，層 $0$ が ${n_zero}$ 行，"
         f"最終層が ${n_last}$ 行を占める",
     )
     lin_diag = [float(r["best_linear_r2"]) for r in corr if r["source_layer"] == r["target_layer"]]
@@ -180,31 +182,31 @@ def main():
             lin_best[s] = (t, v)
     check(
         "off-diagonal linear regressability",
-        f"適合 $R^2$ は対角平均 ${fmt(sum(lin_diag) / len(lin_diag), 2)}$ 対 非対角平均 ${fmt(sum(lin_off) / len(lin_off), 2)}$",
+        f"適合 $R^2$ の平均は対角要素で ${fmt(sum(lin_diag) / len(lin_diag), 2)}$，非対角要素で ${fmt(sum(lin_off) / len(lin_off), 2)}$",
     )
     check(
         "linear argmax same-layer count",
-        f"同番号層が最良となるのは $32$ 行中 ${sum(1 for s, (t, _) in lin_best.items() if s == t)}$ 行",
+        f"同じ番号の層が最良となる行は $32$ 行中 ${sum(1 for s, (t, _) in lin_best.items() if s == t)}$ 行",
     )
     all_lin = lin_diag + lin_off
     check(
         "figure caption fit range",
-        f"適合 $R^2$ は ${fmt(min(all_lin), 2)}$--${fmt(max(all_lin), 2)}$ とほぼ全ペアで高い",
+        f"適合 $R^2$ は ${fmt(min(all_lin), 2)}$--${fmt(max(all_lin), 2)}$ であり，ほぼすべての組で高い",
     )
 
     lin = {r["execution_path"]: r for r in load(table_dir, "paper_cross_family_linearity.csv") if r["scope"] == "mean"}
     aff_ab, aff_ba = float(lin["A_to_B"]["best_affine_cross_r2"]), float(lin["B_to_A"]["best_affine_cross_r2"])
     fit_ab, fit_ba = float(lin["A_to_B"]["linearised_fit_r2"]), float(lin["B_to_A"]["linearised_fit_r2"])
     ada_ab, ada_ba = float(lin["A_to_B"]["adapter_cross_r2"]), float(lin["B_to_A"]["adapter_cross_r2"])
-    check("abstract affine", f"で ${fmt(aff_ab, 3)}/{fmt(aff_ba, 3)}$ に達する一方")
+    # The abstract and introduction no longer restate the direct-affine reach; it is pinned where the
+    # linearity subsection prints it ("direct affine reach" below).
     check(
-        "abstract nonaffine share",
-        f"学習済みアダプタ出力の ${fmt((1 - fit_ab) * 100, 1)}\\%/{fmt((1 - fit_ba) * 100, 1)}\\%$ は",
+        "nonaffine share",
+        f"残りの ${fmt((1 - fit_ab) * 100, 1)}\\%$／${fmt((1 - fit_ba) * 100, 1)}\\%$ は",
     )
     check("affine imitation", f"\\RtoP{{}} で ${fmt(fit_ab * 100, 1)}\\%$，\\PtoR{{}} で ${fmt(fit_ba * 100, 1)}\\%$ である")
-    check("direct affine reach", f"最良直接アフィン写像は \\RtoP{{}} ${fmt(aff_ab, 3)}$，\\PtoR{{}} ${fmt(aff_ba, 3)}$ に達する")
-    check("intro linear reach", f"最良の\\emph{{線形}}写像だけでも $A\\!\\to\\!B\\ {fmt(aff_ab, 3)}$，$B\\!\\to\\!A\\ {fmt(aff_ba, 3)}$ に届く")
-    check("adapter on same rows", f"対応するアダプタは同じ行で \\RtoP{{}} ${fmt(ada_ab, 3)}$，\\PtoR{{}} ${fmt(ada_ba, 3)}$")
+    check("direct affine reach", f"最良の直接アフィン写像は \\RtoP{{}} で ${fmt(aff_ab, 3)}$，\\PtoR{{}} で ${fmt(aff_ba, 3)}$ に達する")
+    check("adapter on same rows", f"同じ行でのアダプタの値は \\RtoP{{}} で ${fmt(ada_ab, 3)}$，\\PtoR{{}} で ${fmt(ada_ba, 3)}$")
     check("nonlinear increment", f"増分は $+{fmt(ada_ab - aff_ab, 3)}$／$+{fmt(ada_ba - aff_ba, 3)}$")
 
     mlp = load(table_dir, "paper_cross_family_mlp_intervention.csv")
@@ -246,23 +248,62 @@ def main():
             r for r in pairs if r["task"] == task and r["config_a"] == config_a and r["config_b"] == config_b
         )
 
-    d_sciq = pair_row("sciq", "A_to_B@4", "rwkv")
-    d_arc = pair_row("arc_easy", "A_to_B@4", "rwkv")
-    check(
-        "claim (d) AB@4 vs RWKV",
-        f"RWKV を ${signed(fmt(float(d_sciq['accuracy_difference']) * 100, 1))}$ 点上回り，"
-        f"$p{{=}}{fmt_p(d_sciq['mcnemar_p'])}$ となる一方，ARC-Easy では "
-        f"${signed(fmt(float(d_arc['accuracy_difference']) * 100, 1))}$ 点，"
-        f"$p{{=}}{fmt_p(d_arc['mcnemar_p'])}$ となる",
+    # Table 4 (tab:paired): accuracy differences in points and McNemar p-values against RWKV and between the
+    # two directions. These rows replace the prose that used to carry the same comparisons.
+    def table_p(p):
+        return "<10^{-4}" if float(p) < 1e-4 else fmt_p(p)
+
+    for layer in (4, 8, 16, 24):
+        cells = [
+            pair_row(task, config_a, config_b)
+            for task in ("arc_easy", "sciq")
+            for config_a, config_b in (
+                (f"A_to_B@{layer}", "rwkv"),
+                (f"B_to_A@{layer}", "rwkv"),
+                (f"B_to_A@{layer}", f"A_to_B@{layer}"),
+            )
+        ]
+        check(
+            f"paired table L={layer} differences",
+            f"{layer} & "
+            + " & ".join(f"${signed(fmt(float(r['accuracy_difference']) * 100, 1))}$" for r in cells)
+            + "\\\\",
+        )
+        check(
+            f"paired table L={layer} p-values",
+            "& " + " & ".join(f"(${table_p(r['mcnemar_p'])}$)" for r in cells) + "\\\\",
+        )
+    cross_vs_rwkv = [
+        pair_row(task, f"{path}@{layer}", "rwkv")
+        for path in ("A_to_B", "B_to_A")
+        for layer in (4, 8, 16, 24)
+        for task in ("arc_easy", "sciq")
+    ]
+    invariant(
+        "only RWKV->Pythia L=4 on SciQ significantly exceeds RWKV",
+        [
+            (r["config_a"], r["task"])
+            for r in cross_vs_rwkv
+            if float(r["accuracy_difference"]) > 0 and float(r["mcnemar_p"]) < 0.05
+        ]
+        == [("A_to_B@4", "sciq")],
     )
-    d2_arc = pair_row("arc_easy", "B_to_A@4", "rwkv")
-    d2_sciq = pair_row("sciq", "B_to_A@4", "rwkv")
-    check(
-        "claim (d) BA@4 vs RWKV",
-        f"ARC ${fmt(float(d2_arc['accuracy_a']) * 100, 1)}$ 対 ${fmt(float(d2_arc['accuracy_b']) * 100, 1)}$ で "
-        f"$p{{=}}{fmt_p(d2_arc['mcnemar_p'])}$，SciQ ${fmt(float(d2_sciq['accuracy_a']) * 100, 1)}$ 対 "
-        f"${fmt(float(d2_sciq['accuracy_b']) * 100, 1)}$ で $p{{=}}{fmt_p(d2_sciq['mcnemar_p'])}$",
+    vs_pythia = [
+        next(
+            r
+            for r in pairs
+            if r["task"] == task and {r["config_a"], r["config_b"]} == {f"{path}@{layer}", "pythia"}
+        )
+        for path in ("A_to_B", "B_to_A")
+        for layer in (4, 8, 16, 24)
+        for task in ("arc_easy", "sciq")
+    ]
+    invariant(
+        "all 16 cross configurations significantly below Pythia with p <= 0.003",
+        all(float(r["mcnemar_p"]) <= 0.003 for r in vs_pythia)
+        and all((float(r["accuracy_difference"]) < 0) == (r["config_b"] == "pythia") for r in vs_pythia),
     )
+    check("Pythia comparison p bound", "$p\\le0.003$")
 
     four = load(table_dir, "paper_four_path_qa_accuracy.csv")
     acc = {
@@ -274,33 +315,19 @@ def main():
         for task in ("arc_easy", "sciq")
     }
     check(
-        "claim (f) gap ranges",
-        f"SciQ ${fmt(min(gaps['sciq']), 0)}$--${fmt(max(gaps['sciq']), 0)}$ 点，"
-        f"ARC ${fmt(min(gaps['arc_easy']), 0)}$--${fmt(max(gaps['arc_easy']), 0)}$ 点",
+        "Pythia self-recon vs RWKV->Pythia gap ranges",
+        f"\\Pythiaself{{}} と \\RtoP{{}} の差は ARC で ${fmt(min(gaps['arc_easy']), 0)}$--${fmt(max(gaps['arc_easy']), 0)}$ 点，"
+        f"SciQ で ${fmt(min(gaps['sciq']), 0)}$--${fmt(max(gaps['sciq']), 0)}$ 点",
     )
     ba_ab_16_24 = {
         (task, l): pair_row(task, f"B_to_A@{l}", f"A_to_B@{l}") for task in ("arc_easy", "sciq") for l in (16, 24)
     }
-    check(
-        "BA vs AB deep boundaries",
-        f"ARC で ${signed(fmt(float(ba_ab_16_24[('arc_easy', 16)]['accuracy_difference']) * 100, 1))}"
-        f"/{signed(fmt(float(ba_ab_16_24[('arc_easy', 24)]['accuracy_difference']) * 100, 1))}$ 点，"
-        f"SciQ で ${signed(fmt(float(ba_ab_16_24[('sciq', 16)]['accuracy_difference']) * 100, 1))}"
-        f"/{signed(fmt(float(ba_ab_16_24[('sciq', 24)]['accuracy_difference']) * 100, 1))}$ 点上回る",
-    )
+    # The L=16/24 direction gaps themselves are pinned by the Table 4 rows above.
     invariant(
         "BA vs AB deep p < 3e-15",
         all(float(r["mcnemar_p"]) < 3e-15 for r in ba_ab_16_24.values()),
     )
-    l4_arc = pair_row("arc_easy", "B_to_A@4", "A_to_B@4")
-    l4_sciq = pair_row("sciq", "B_to_A@4", "A_to_B@4")
-    check(
-        "BA vs AB shallow",
-        f"ARC で ${signed(fmt(float(l4_arc['accuracy_difference']) * 100, 1))}$ 点，"
-        f"$p{{=}}{fmt_p(l4_arc['mcnemar_p'])}$ だが，SciQ では "
-        f"${signed(fmt(float(l4_sciq['accuracy_difference']) * 100, 1))}$ 点，"
-        f"$p{{=}}{fmt_p(l4_sciq['mcnemar_p'])}$",
-    )
+    # The L=4 direction gap is pinned by the Table 4 L=4 rows above.
 
     qa = load(table_dir, "paper_cross_family_qa_accuracy.csv")
     qa_acc = {(r["config"], r["task"]): float(r["accuracy_norm"]) * 100 for r in qa}
@@ -311,27 +338,40 @@ def main():
     ]
     check(
         "AB adapter vs affine range",
-        f"アダプタが全セルで ${fmt(min(ab_affine_gaps), 0)}$--${fmt(max(ab_affine_gaps), 0)}$ 点高い",
+        f"正答率は ${fmt(min(ab_affine_gaps), 0)}$--${fmt(max(ab_affine_gaps), 0)}$ 点低下する",
     )
-    check(
-        "best cross QA",
-        f"SciQ では \\RtoP{{}} ${fmt(max(acc[('A_to_B', 'sciq', l)] for l in (4, 8, 16, 24)), 1)}\\%$，"
-        f"\\PtoR{{}} ${fmt(max(acc[('B_to_A', 'sciq', l)] for l in (4, 8, 16, 24)), 1)}\\%$ に達する",
+    # Table 3 (tab:direction): four-path accuracies, each task's row maximum in bold.
+    paths = ("A_to_A", "A_to_B", "B_to_B", "B_to_A")
+    for layer in (4, 8, 16, 24):
+        best = {task: max(paths, key=lambda p: acc[(p, task, layer)]) for task in ("arc_easy", "sciq")}
+        cells = []
+        for path in paths:
+            for task in ("arc_easy", "sciq"):
+                text = fmt(acc[(path, task, layer)], 1)
+                cells.append(f"\\textbf{{{text}}}" if best[task] == path else text)
+        check(f"four-path table L={layer}", f"{layer} & " + " & ".join(cells) + "\\\\")
+    by_layer = lambda path, task: [acc[(path, task, l)] for l in (4, 8, 16, 24)]
+    falls = lambda v: all(a > b for a, b in zip(v, v[1:]))
+    rises = lambda v: all(a < b for a, b in zip(v, v[1:]))
+    invariant(
+        "RWKV->Pythia falls monotonically with switch depth",
+        all(falls(by_layer("A_to_B", t)) for t in ("arc_easy", "sciq")),
     )
-    seq = lambda path, task: "\\to".join(fmt(acc[(path, task, l)], 1) for l in (4, 8, 16, 24))
-    check("AB depth trend", f"${seq('A_to_B', 'sciq')}$，ARC-Easy ${seq('A_to_B', 'arc_easy')}$ と単調に下がる")
-    check("BA depth trend", f"SciQ ${seq('B_to_A', 'sciq')}$，ARC-Easy ${seq('B_to_A', 'arc_easy')}$ と非単調")
+    invariant(
+        "Pythia->RWKV is non-monotonic in switch depth",
+        all(not (falls(v) or rises(v)) for v in (by_layer("B_to_A", t) for t in ("arc_easy", "sciq"))),
+    )
     mean_ab4 = (acc[("A_to_B", "arc_easy", 4)] + acc[("A_to_B", "sciq", 4)]) / 2
     mean_ba4 = (acc[("B_to_A", "arc_easy", 4)] + acc[("B_to_A", "sciq", 4)]) / 2
-    check("two-task means", f"${fmt(mean_ab4, 2)}\\%\\to{fmt(mean_ba4, 2)}\\%$ とほぼ保つ")
+    check("two-task means", f"${fmt(mean_ab4, 2)}\\%\\to{fmt(mean_ba4, 2)}\\%$ と同等に保つ")
     sum_acc = {
         (r["config"], r["task"]): float(r["accuracy_sum"]) * 100 for r in qa if r["accuracy_sum"]
     }
     check(
         "sum-scoring robustness note",
-        f"\\RtoPL{{4}} は SciQ ${fmt(sum_acc[('A_to_B@4', 'sciq')] - sum_acc[('rwkv', 'sciq')], 1)}$ 点であり，"
-        f"\\PtoRL{{4}} は ARC ${fmt(sum_acc[('B_to_A@4', 'arc_easy')] - sum_acc[('rwkv', 'arc_easy')], 1)}$ 点，"
-        f"SciQ ${fmt(sum_acc[('B_to_A@4', 'sciq')] - sum_acc[('rwkv', 'sciq')], 1)}$ 点",
+        f"\\RtoPL{{4}} が SciQ で ${fmt(sum_acc[('A_to_B@4', 'sciq')] - sum_acc[('rwkv', 'sciq')], 1)}$ 点，"
+        f"\\PtoRL{{4}} が ARC で ${fmt(sum_acc[('B_to_A@4', 'arc_easy')] - sum_acc[('rwkv', 'arc_easy')], 1)}$ 点，"
+        f"SciQ で ${fmt(sum_acc[('B_to_A@4', 'sciq')] - sum_acc[('rwkv', 'sciq')], 1)}$ 点となる",
     )
     invariant(
         "core claims robust under sum scoring",
@@ -350,21 +390,16 @@ def main():
 
     mem = {r["config"]: r for r in load(table_dir, "paper_cross_family_memory_accuracy.csv")}
     ba4, parent_b, parent_a = mem["B_to_A@4"], mem["pure-Pythia"], mem["pure-RWKV"]
-    check(
-        "abstract KV",
-        f"KV を ${fmt(float(ba4['kv_reduction_fraction']) * 100, 1)}\\%$ 削減しつつ，"
-        f"ARC-Easy ${fmt(float(ba4['arc_easy_accuracy_norm']) * 100, 1)}\\%$，"
-        f"SciQ ${fmt(float(ba4['sciq_accuracy_norm']) * 100, 1)}\\%$ を保つ",
-    )
+    check("KV reduction headline", f"KV キャッシュを ${fmt(float(ba4['kv_reduction_fraction']) * 100, 1)}\\%$ 削減しつつ")
     check(
         "RWKV state size",
-        f"層あたり ${fmt(float(ba4['rwkv_state_kib_per_layer']), 0)}$ KiB である。"
-        "この値は，参照実装が持つ $5$ 状態ベクトル",
+        f"層あたり ${fmt(float(ba4['rwkv_state_kib_per_layer']), 0)}$ KiB の再帰状態を持つ．"
+        "この値は，参照実装が保持する $5$ 個の状態ベクトル",
     )
     check(
         "table5 pythia row",
-        f"& ${fmt(float(parent_b['kv_kib_per_token']), 0)}$ KiB & ${fmt(float(parent_b['kv_gib_at_context']), 2)}$ GiB & $0\\%$ & "
-        f"{fmt(float(parent_b['arc_easy_accuracy_norm']) * 100, 1)} / {fmt(float(parent_b['sciq_accuracy_norm']) * 100, 1)}",
+        f"P 単体 & -- & 32 & {fmt(float(parent_b['kv_kib_per_token']), 0)} & {fmt(float(parent_b['kv_gib_at_context']), 2)} & 0 & "
+        f"{fmt(float(parent_b['arc_easy_accuracy_norm']) * 100, 1)}/{fmt(float(parent_b['sciq_accuracy_norm']) * 100, 1)}\\\\",
     )
     check(
         "table5 rwkv row",
@@ -372,8 +407,9 @@ def main():
     )
     check(
         "table5 BA@4 row",
-        f"\\textbf{{$\\mathbf{{{fmt(float(ba4['kv_reduction_fraction']) * 100, 1)}}}\\%$}} & "
-        f"\\textbf{{{fmt(float(ba4['arc_easy_accuracy_norm']) * 100, 1)} / {fmt(float(ba4['sciq_accuracy_norm']) * 100, 1)}}}",
+        f"\\textbf{{{fmt(float(ba4['kv_kib_per_token']), 0)}}} & \\textbf{{{fmt(float(ba4['kv_gib_at_context']), 2)}}} & "
+        f"\\textbf{{{fmt(float(ba4['kv_reduction_fraction']) * 100, 1)}}} & "
+        f"\\textbf{{{fmt(float(ba4['arc_easy_accuracy_norm']) * 100, 1)}/{fmt(float(ba4['sciq_accuracy_norm']) * 100, 1)}}}\\\\",
     )
     frontier = sorted(
         ((float(r["kv_reduction_fraction"]), float(r["sciq_accuracy_norm"]), c) for c, r in mem.items()),
@@ -397,31 +433,148 @@ def main():
         if "affine" not in r["config"]
     }
     check(
-        "domain shift ctx512 AB",
-        f"Alpaca で perplexity ${fmt(ppl[('A_to_B@4', 'alpaca', 512)], 2)}$，WikiText-103 で ${fmt(ppl[('A_to_B@4', 'wikitext', 512)], 2)}$",
+        "domain shift parents ctx512",
+        f"RWKV が Alpaca で ${fmt(ppl[('pure-RWKV', 'alpaca', 512)], 2)}$，WikiText で ${fmt(ppl[('pure-RWKV', 'wikitext', 512)], 2)}$，"
+        f"Pythia がそれぞれ ${fmt(ppl[('pure-Pythia', 'alpaca', 512)], 2)}$ と ${fmt(ppl[('pure-Pythia', 'wikitext', 512)], 2)}$ である",
     )
     check(
-        "domain shift ctx512 BA",
-        f"${fmt(ppl[('B_to_A@4', 'alpaca', 512)], 2)}/{fmt(ppl[('B_to_A@4', 'wikitext', 512)], 2)}$ と両領域で改善",
-    )
-    check(
-        "domain shift parents",
-        f"親の ${fmt(ppl[('pure-RWKV', 'wikitext', 512)], 2)}/{fmt(ppl[('pure-Pythia', 'wikitext', 512)], 2)}$ から",
+        "domain shift chimeras ctx512",
+        f"\\RtoPL{{4}} は Alpaca で ${fmt(ppl[('A_to_B@4', 'alpaca', 512)], 2)}$，WikiText で ${fmt(ppl[('A_to_B@4', 'wikitext', 512)], 2)}$，"
+        f"\\PtoRL{{4}} は ${fmt(ppl[('B_to_A@4', 'alpaca', 512)], 2)}$ と ${fmt(ppl[('B_to_A@4', 'wikitext', 512)], 2)}$ であり",
     )
     check(
         "domain shift ctx2048 BA",
-        f"Alpaca ${fmt(ppl[('B_to_A@4', 'alpaca', 2048)], 2)}$，WikiText ${fmt(ppl[('B_to_A@4', 'wikitext', 2048)], 2)}$",
+        f"\\PtoRL{{4}} は Alpaca で ${fmt(ppl[('B_to_A@4', 'alpaca', 2048)], 2)}$，"
+        f"WikiText で ${fmt(ppl[('B_to_A@4', 'wikitext', 2048)], 2)}$ となり",
     )
     ratio = ppl[("B_to_A@4", "wikitext", 2048)] / ppl[("pure-RWKV", "wikitext", 2048)]
     check(
         "domain shift ratio",
-        f"WikiText ${fmt(ppl[('B_to_A@4', 'wikitext', 2048)], 2)}$ は良い方の親 RWKV ${fmt(ppl[('pure-RWKV', 'wikitext', 2048)], 2)}$ の ${fmt(ratio, 1)}$ 倍",
+        f"WikiText の ${fmt(ppl[('B_to_A@4', 'wikitext', 2048)], 2)}$ は，同じ文脈長で良い方の親モデルである RWKV の "
+        f"${fmt(ppl[('pure-RWKV', 'wikitext', 2048)], 2)}$ の ${fmt(ratio, 1)}$ 倍",
     )
     for config, x in (("pure-RWKV", 11), ("pure-Pythia", 33), ("A_to_B@4", 55), ("B_to_A@4", 77)):
         check(
             f"figure6 {config}",
             f"{{{fmt(ppl[(config, 'alpaca', 512)], 2)}}}{{{fmt(ppl[(config, 'wikitext', 512)], 2)}}}",
         )
+
+    # Domain-shift affine control, refit per evaluated text on a disjoint prefix of that text.
+    ppl_all = {
+        (r["config"], r["domain"], int(r["context_tokens"])): float(r["perplexity"]) for r in shift
+    }
+    check(
+        "domain shift affine BA@4 wikitext",
+        f"\\PtoRL{{4}} では文脈長 $512$ で ${fmt(ppl_all[('B_to_A_affine@4', 'wikitext', 512)], 2)}$ 対 "
+        f"${fmt(ppl_all[('B_to_A@4', 'wikitext', 512)], 2)}$，文脈長 $2048$ で "
+        f"${fmt(ppl_all[('B_to_A_affine@4', 'wikitext', 2048)], 2)}$ 対 ${fmt(ppl_all[('B_to_A@4', 'wikitext', 2048)], 2)}$",
+    )
+    check(
+        "domain shift affine BA@4 alpaca",
+        f"文脈長 $512$ で ${fmt(ppl_all[('B_to_A_affine@4', 'alpaca', 512)], 2)}$ 対 "
+        f"${fmt(ppl_all[('B_to_A@4', 'alpaca', 512)], 2)}$ である",
+    )
+    grid = [(layer, context) for layer in (4, 8, 16, 24) for context in (512, 1024, 2048)]
+    invariant(
+        "Pythia->RWKV affine control beats the adapter on WikiText everywhere",
+        all(ppl_all[(f"B_to_A_affine@{l}", "wikitext", c)] < ppl_all[(f"B_to_A@{l}", "wikitext", c)] for l, c in grid),
+    )
+    invariant(
+        "RWKV->Pythia affine control is no better than the adapter on WikiText anywhere",
+        all(ppl_all[(f"A_to_B_affine@{l}", "wikitext", c)] >= ppl_all[(f"A_to_B@{l}", "wikitext", c)] for l, c in grid),
+    )
+    fit_bundle = table_dir.parent / "raw" / "b_to_a_longctx_wikitext.json"
+    if fit_bundle.exists():
+        check("domain shift affine fit rows", f"先頭の ${comma(json.loads(fit_bundle.read_text(encoding='utf-8'))['fit_rows_actual'])}$ トークン")
+
+    # Equal-KV Pythia early exits (tab:earlyexit): chimera minus early exit, ordered by kept Transformer layers.
+    exits = [r for r in pairs if r["comparison_family"] == "equal_memory"]
+    exit_rows = {}
+    for r in exits:
+        exit_rows.setdefault(r["config_b"], {})[r["task"]] = r
+    ordered = sorted(exit_rows, key=lambda c: int(exit_rows[c]["arc_easy"]["config_a"].split("@")[1]))
+    for config in ordered:
+        arc, sciq = exit_rows[config]["arc_easy"], exit_rows[config]["sciq"]
+        kept = int(arc["config_a"].split("@")[1])
+        label = "P$\\to$R" if config.startswith("B_to_A") else "R$\\to$P"
+        layer = int(config.split("@")[1])
+        check(
+            f"early-exit table {config}",
+            f"\\textsf{{{label}}} & {layer} & {kept} & "
+            f"${signed(fmt(-float(arc['accuracy_difference']) * 100, 1))}$ & ${table_p(arc['mcnemar_p'])}$ & "
+            f"${signed(fmt(-float(sciq['accuracy_difference']) * 100, 1))}$ & ${table_p(sciq['mcnemar_p'])}$\\\\",
+        )
+    invariant(
+        "chimeras keeping <=17 Transformer layers beat the equal-KV early exit on both tasks (p<1e-4)",
+        all(
+            float(r["accuracy_difference"]) < 0 and float(r["mcnemar_p"]) < 1e-4
+            for r in exits
+            if int(r["config_a"].split("@")[1]) <= 17
+        ),
+    )
+    invariant(
+        "among chimeras keeping >=23 layers only RWKV->Pythia L=8 on ARC differs significantly",
+        [
+            (r["config_b"], r["task"])
+            for r in exits
+            if int(r["config_a"].split("@")[1]) >= 23 and float(r["mcnemar_p"]) < 0.05
+        ]
+        == [("A_to_B@8", "arc_easy")],
+    )
+    ba4_exit = exit_rows["B_to_A@4"]
+    check(
+        "early exit BA@4 accuracies",
+        f"ARC で ${fmt(float(ba4_exit['arc_easy']['accuracy_b']) * 100, 1)}\\%$ 対 "
+        f"${fmt(float(ba4_exit['arc_easy']['accuracy_a']) * 100, 1)}\\%$，SciQ で "
+        f"${fmt(float(ba4_exit['sciq']['accuracy_b']) * 100, 1)}\\%$ 対 ${fmt(float(ba4_exit['sciq']['accuracy_a']) * 100, 1)}\\%$",
+    )
+
+    # Serving: unpruned prefill latency of the parents, pruned chimera prefill, and pruned resident weights.
+    serving = load(table_dir, "paper_cross_family_serving.csv")
+    def prefill(benchmark, producer, config, context):
+        return float(next(
+            r["ms"] for r in serving
+            if r["benchmark"] == benchmark and r["phase"] == "prefill" and r["producer_path"] == producer
+            and r["config"] == config and r["context_tokens"] == str(context)
+        ))
+    r512, p512 = prefill("unpruned", "A_to_B", "pure-RWKV", 512), prefill("unpruned", "A_to_B", "pure-Pythia", 512)
+    r2048, p2048 = prefill("unpruned", "A_to_B", "pure-RWKV", 2048), prefill("unpruned", "A_to_B", "pure-Pythia", 2048)
+    check(
+        "prefill ctx512",
+        f"RWKV 単体が ${comma(round(r512))}$ ms，Pythia 単体が ${fmt(p512, 0)}$ ms であり，約 ${fmt(r512 / p512, 0)}$ 倍",
+    )
+    check(
+        "prefill ctx2048",
+        f"${comma(round(r2048))}$ ms 対 ${fmt(p2048, 0)}$ ms と約 ${fmt(r2048 / p2048, 0)}$ 倍",
+    )
+    check(
+        "pruned prefill L=4",
+        f"\\RtoPL{{4}} は ${comma(round(prefill('pruned', 'A_to_B', 'pruned-A_to_B@4', 512)))}$ ms，"
+        f"$27$ ブロック実行する \\PtoRL{{4}} は ${comma(round(prefill('pruned', 'B_to_A', 'pruned-B_to_A@4', 512)))}$ ms",
+    )
+    pruned = [r for r in serving if r["benchmark"] == "pruned" and r["config"].startswith("pruned-")]
+    weights = [float(r["weight_mib_total"]) / 1024 for r in pruned]
+    parent_weight = lambda config: float(next(r["weight_mib_total"] for r in serving if r["benchmark"] == "pruned" and r["config"] == config)) / 1024
+    check(
+        "pruned resident weights",
+        f"アダプタを含めて常駐する重みは ${fmt(min(weights), 2)}$--${fmt(max(weights), 2)}$ GiB であり，RWKV 単体の "
+        f"${fmt(parent_weight('pure-RWKV'), 2)}$ GiB，Pythia 単体の ${fmt(parent_weight('pure-Pythia'), 2)}$ GiB",
+    )
+    invariant(
+        "pruned chimeras reproduce the unpruned outputs",
+        bool(pruned) and all(r["gate_relative_error"] != "" and float(r["gate_relative_error"]) == 0.0 for r in pruned),
+    )
+    for producer in ("A_to_B", "B_to_A"):
+        for context in (512, 2048):
+            runs = sorted(
+                (int(r["rwkv_blocks"]), float(r["ms"])) for r in pruned
+                if r["producer_path"] == producer and r["context_tokens"] == str(context)
+            )
+            invariant(
+                f"pruned {producer} prefill grows with RWKV blocks at ctx{context}",
+                len(runs) == 4 and all(a[1] < b[1] for a, b in zip(runs, runs[1:])),
+                f"runs = {runs}",
+            )
 
     # Evaluation-set exposure: produced by tools/check_eval_leakage.py, which needs no
     # GPU (it recomputes from the per-item correctness dumps), so a reviewer can rerun it.
@@ -431,7 +584,7 @@ def main():
         counts = leak["matched_counts"]
         check(
             "leakage matched counts",
-            f"ARC-Easy ${counts['arc_easy']}$ 問と SciQ ${counts['sciq']}$ 問",
+            f"ARC の ${counts['arc_easy']}$ 問と SciQ の ${counts['sciq']}$ 問",
         )
         check(
             "leakage max delta",
@@ -450,7 +603,7 @@ def main():
         if skipped:
             check(
                 "leakage unsearched short questions",
-                f"その内訳は ARC-Easy ${skipped['arc_easy']}$ 問と SciQ ${skipped['sciq']}$ 問",
+                f"内訳は ARC が ${skipped['arc_easy']}$ 問，SciQ が ${skipped['sciq']}$ 問",
             )
         invariant(
             "leakage does not overturn any comparison",
@@ -458,10 +611,8 @@ def main():
             f"max |delta| = {leak['max_abs_delta_points']}",
         )
 
-    gen = load(table_dir, "paper_cross_family_generation_samples.csv")
-    gen_r2 = {r["execution_path"]: r["adapter_cross_r2"] for r in gen if r["adapter_cross_r2"]}
-    for path in ("A_to_B", "B_to_A"):
-        check(f"generation R2 {path}", f"横断読み出し $R^2{{=}}{fmt(float(gen_r2[path]), 3)}$")
+    # The generation table no longer prints the cross read-out R^2 in its header, so it is not pinned here;
+    # the same read-outs are pinned by the headline checks near the top.
 
     adapter_pkgs = [p for p in sorted(release_dir.glob("*adapter*")) if (p / "model.safetensors").exists()]
     full_pkgs = [p for p in sorted(release_dir.glob("*-best")) if (p / "source").is_dir()]
@@ -470,11 +621,12 @@ def main():
         train_cfg = json.loads((adapter_pkgs[0] / "config.json").read_text(encoding="utf-8"))["training"]
         headline_windows = int(train_cfg["held_out_windows"])
         check(
-            "held-out set sizes",
-            f"学習時評価には ${comma(headline_windows)}$ 窓，すなわち "
-            f"${comma(headline_windows * 112)}$ トークンを用いる。"
-            f"層別分析とシャッフル対照には ${comma(layer_windows)}$ 窓，すなわち "
-            f"${comma(layer_windows * 112)}$ トークンを用いる",
+            "held-out set size (headline)",
+            f"系列 ${comma(headline_windows)}$ 本，すなわち ${comma(headline_windows * 112)}$ トークンで求める",
+        )
+        check(
+            "held-out set size (per-layer and shuffle)",
+            f"系列 ${comma(layer_windows)}$ 本，すなわち ${comma(layer_windows * 112)}$ トークンを用いる",
         )
         adapter_params = safetensors_param_count(adapter_pkgs[0] / "model.safetensors")
         parent_bytes = sum(
@@ -485,8 +637,8 @@ def main():
         check("parents total params", f"親モデルの合計 ${fmt(parent_params / 1e9, 2)}$B パラメータ")
         check(
             "adapter params and share",
-            f"アダプタは ${fmt(adapter_params / 1e6, 1)}$M であり，"
-            f"その比率は ${fmt(adapter_params / parent_params * 100, 1)}\\%$",
+            f"アダプタは ${fmt(adapter_params / 1e6, 1)}$M パラメータであり，"
+            f"比率は ${fmt(adapter_params / parent_params * 100, 1)}\\%$",
         )
     else:
         # release/ is gitignored: a fresh public checkout has no staged packages, so the two
