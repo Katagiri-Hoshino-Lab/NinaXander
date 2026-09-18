@@ -2,8 +2,10 @@
 """Gate: the English paper must contain exactly the same numbers as the Japanese one.
 
 A translation may not change, drop, or invent a single numeric token. Numeric
-tokens are compared as multisets over the full LaTeX sources, so any numeric
-drift between paper_ja.tex and paper_en.tex fails the build.
+tokens are compared as multisets over the document bodies, so any numeric
+drift between paper_ja.tex and paper_en.tex fails the build. The preamble,
+comments and explicit \\fontsize settings are left out: they carry per-language
+layout (revision colours, the Japanese table leading), not reported values.
 """
 
 import argparse
@@ -16,7 +18,14 @@ NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
 
 
 def numbers(path: pathlib.Path) -> Counter:
-    return Counter(NUMBER.findall(path.read_text(encoding="utf-8")))
+    text = path.read_text(encoding="utf-8")
+    m = re.search(r"^[ \t]*\\begin\{document\}", text, re.M)
+    if not m:
+        raise SystemExit(f"{path}: no \\begin{{document}}; refusing to compare an empty body")
+    text = text[m.start():]
+    text = re.sub(r"(?<!\\)((?:\\\\)*)%.*", r"\1", text)
+    text = re.sub(r"\\fontsize\{[^}]*\}\{[^}]*\}", "", text)
+    return Counter(NUMBER.findall(text))
 
 
 def main() -> int:
@@ -31,6 +40,9 @@ def main() -> int:
         return 0
 
     ja, en = numbers(pathlib.Path(args.ja)), numbers(en_path)
+    if not sum(ja.values()) or not sum(en.values()):
+        print("ERROR: a paper body contains no numbers; refusing to report parity")
+        return 1
     only_ja = ja - en
     only_en = en - ja
 

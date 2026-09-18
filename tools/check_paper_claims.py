@@ -38,6 +38,34 @@ def comma(step):
     return f"{int(step):,}".replace(",", "{,}")
 
 
+def strip_revision_marks(text):
+    """Unwrap the co-authors' colour-coded revision macros (\\rev{...}, \\revo{...}, ...).
+
+    The wrappers only colour the text in the PDF; a claim must match whether or not a
+    revision round is still marked up.
+    """
+    out, i = [], 0
+    pattern = re.compile(r"\\rev[a-z]?\{")
+    while True:
+        m = pattern.search(text, i)
+        if not m:
+            out.append(text[i:])
+            return "".join(out)
+        out.append(text[i:m.start()])
+        depth, j = 1, m.end()
+        while depth:
+            if j >= len(text):
+                line = text.count("\n", 0, m.start()) + 1
+                raise SystemExit(f"unbalanced {m.group(0)}...}} starting at line {line}")
+            if text[j] == "\\":
+                j += 2
+                continue
+            depth += {"{": 1, "}": -1}.get(text[j], 0)
+            j += 1
+        out.append(strip_revision_marks(text[m.end():j - 1]))
+        i = j
+
+
 def load(table_dir, name):
     with open(table_dir / name, encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
@@ -70,7 +98,8 @@ def main():
     raw_tex = pathlib.Path(args.tex).read_text(encoding="utf-8")
     # Line breaks and spaces are typographically irrelevant in the fragments we
     # pin, so matching is done on a space-free form of both sides.
-    tex = re.sub(r"\s+", "", raw_tex)
+    uncommented = re.sub(r"(?<!\\)((?:\\\\)*)%.*", r"\1", raw_tex)
+    tex = re.sub(r"\s+", "", strip_revision_marks(uncommented))
 
     failures = []
     passed = 0
@@ -108,7 +137,6 @@ def main():
         "common-mode identity",
         f"$(1{{-}}{fmt(f_var, 3)})+{fmt(f_var, 3)}\\times{fmt(rho, 3)}={fmt(raw_corr, 3)}$",
     )
-    check("deepest f", f"最終チェックポイントの $f$ は ${fmt(f_var, 3)}$ であり")
     check("constant share", f"潜在の二乗ノルムの ${fmt((1 - f_var) * 100, 0)}\\%$ は")
     invariant(
         "identity residual",
@@ -149,6 +177,31 @@ def main():
         f"${comma(best_step)}$ 反復目",
     )
     check("reported checkpoint", f"${comma(best_step)}$ 反復目のチェックポイントを以降のすべての評価に用いる")
+    gen_rows = load(table_dir, "paper_cross_family_generation_samples.csv")
+    used_steps = (
+        {int(r["checkpoint_step"]) for r in load(table_dir, "paper_representation.csv")}
+        | {int(r["checkpoint_step"]) for r in load(table_dir, "paper_cross_family_linearity.csv")}
+        | {int(r["checkpoint_step"]) for r in gen_rows if r["checkpoint_step"]}
+    )
+    invariant("every evaluation uses the selected checkpoint", used_steps == {best_step}, f"{used_steps} vs {best_step}")
+    check("selected checkpoint f", f"${comma(best_step)}$ 反復目のチェックポイントの $f$ は ${fmt(f_var, 3)}$ であり")
+    check("generation checkpoint", f"${comma(best_step)}$ 反復目のチェックポイントのアダプタを")
+    gen_chimeras = sorted({r["config"] for r in gen_rows if "_to_" in r["config"]})
+    invariant("generation examples use the two L=4 chimeras", gen_chimeras == ["A_to_B@4", "B_to_A@4"], f"{gen_chimeras}")
+    check("generation scope in the conclusion", f"$L{{=}}4$ の ${len(gen_chimeras)}$ 構成は構文的に妥当な文を生成した")
+    lrs = [float(curve[s]["learning_rate"]) for s in sorted(curve)]
+    invariant("learning rate decays over the printed range", max(lrs) == 1e-3 and min(lrs) == 1e-5 and lrs == sorted(lrs, reverse=True))
+    check("learning-rate range", "学習率を $10^{-3}\\!\\to\\!10^{-5}$ とした")
+    gaps = {b - a for a, b in zip(sorted(curve), sorted(curve)[1:])}
+    invariant("the curve is logged at one evaluation interval", len(gaps) == 1, f"{gaps}")
+    check("evaluation interval", f"学習率は，${comma(min(gaps, default=-1))}$ 反復ごとに評価用データ")
+    ident_err = {
+        s: abs((1 - float(r["latent_f"])) + float(r["latent_f"]) * float(r["latent_rho_centered"]) - float(r["latent_rho_raw"]))
+        for s, r in curve.items()
+    }
+    late_err = max(v for s, v in ident_err.items() if s >= last_step // 2)
+    check("identity error after training", f"${fmt(late_err * 1e4, 0)}\\!\\times\\!10^{{-4}}$ 程度の誤差で成り立つ")
+    check("identity error at iteration 0", f"$0$ 反復目では誤差が ${fmt(ident_err[0] * 1e2, 1)}\\!\\times\\!10^{{-2}}$ に達する")
     # The paper no longer prints the common-mode training-dynamics analysis, so the fragments
     # that pinned it are gone. The equal-KV early-exit baseline and the serving measurements
     # are printed again and are pinned further below.
@@ -170,8 +223,8 @@ def main():
     )
     check(
         "CKA argmax counts",
-        f"$32$ 行中 ${n_diag}$ 行にすぎない．最も類似する列は，層 $0$ が ${n_zero}$ 行，"
-        f"最終層が ${n_last}$ 行を占める",
+        f"$32$ 行中 ${n_diag}$ 行にすぎない．$A$ の各層に最も類似する $B$ の層は，"
+        f"$32$ 層のうち ${n_zero}$ 層で層 $0$，${n_last}$ 層で最終層である",
     )
     lin_diag = [float(r["best_linear_r2"]) for r in corr if r["source_layer"] == r["target_layer"]]
     lin_off = [float(r["best_linear_r2"]) for r in corr if r["source_layer"] != r["target_layer"]]
@@ -189,15 +242,55 @@ def main():
         f"同じ番号の層が最良となる行は $32$ 行中 ${sum(1 for s, (t, _) in lin_best.items() if s == t)}$ 行",
     )
     all_lin = lin_diag + lin_off
+    shapes = {(int(r["n_windows"]), int(r["window_tokens"]), int(r["sample_rows"])) for r in corr}
+    invariant(
+        "all-layer rows = sequences x tokens",
+        len(shapes) == 1 and all(n * w == rows for n, w, rows in shapes),
+        f"shapes = {shapes}",
+    )
+    nwin, win, rows = next(iter(shapes))
+    check("all-layer row source", f"${win}$ トークンの系列 ${nwin}$ 本，すなわち各層の組に共通する ${comma(rows)}$ 行")
     check(
         "figure caption fit range",
         f"適合 $R^2$ は ${fmt(min(all_lin), 2)}$--${fmt(max(all_lin), 2)}$ であり，ほぼすべての組で高い",
     )
 
-    lin = {r["execution_path"]: r for r in load(table_dir, "paper_cross_family_linearity.csv") if r["scope"] == "mean"}
+    lin_rows = load(table_dir, "paper_cross_family_linearity.csv")
+    lin = {r["execution_path"]: r for r in lin_rows if r["scope"] == "mean"}
+    layer_rows = [r for r in lin_rows if r["scope"] == "layer"]
+    rep_layers = sorted({int(r["layer"]) for r in layer_rows})
+    main_layers = {int(r["layers"]) for r in load(table_dir, "paper_representation.csv")}
+    fit_rows = {int(r["fit_rows"]) for r in layer_rows}
+    eval_rows = {int(r["evaluation_rows"]) for r in layer_rows}
+    invariant("linearity per-layer row counts are uniform", len(fit_rows) == 1 and len(eval_rows) == 1, f"{fit_rows} {eval_rows}")
+    invariant("representation means are over one layer count", len(main_layers) == 1, f"{main_layers}")
+    check(
+        "linearity representative layers",
+        f"同じ代表 ${len(rep_layers)}$ 層 $\\{{{','.join(map(str, rep_layers))}\\}}$",
+    )
+    check(
+        "linearity fit/evaluation rows",
+        f"前半の ${comma(next(iter(fit_rows)))}$ 行で適合し，後半の ${comma(next(iter(eval_rows)))}$ 行で評価する",
+    )
     aff_ab, aff_ba = float(lin["A_to_B"]["best_affine_cross_r2"]), float(lin["B_to_A"]["best_affine_cross_r2"])
     fit_ab, fit_ba = float(lin["A_to_B"]["linearised_fit_r2"]), float(lin["B_to_A"]["linearised_fit_r2"])
     ada_ab, ada_ba = float(lin["A_to_B"]["adapter_cross_r2"]), float(lin["B_to_A"]["adapter_cross_r2"])
+    invariant("direct affine predicts about half of the variance", all(0.4 < v < 0.6 for v in (aff_ab, aff_ba)), f"{aff_ab} {aff_ba}")
+    check(
+        "direct affine share of the adapter",
+        f"の残差の分散の約半分を予測でき，アダプタの値の ${fmt(aff_ab / ada_ab * 100, 0)}\\%$／${fmt(aff_ba / ada_ba * 100, 0)}\\%$ に達する",
+    )
+    steps = {b - a for a, b in zip(rep_layers, rep_layers[1:])}
+    invariant("representative layers are evenly spaced", len(steps) == 1, f"{rep_layers}")
+    check(
+        "representative layer spacing",
+        f"代表 ${len(rep_layers)}$ 層は，層 ${rep_layers[0]}$ から層 ${rep_layers[-1]}$ まで ${min(steps, default=-1)}$ 層ごとに取った",
+    )
+    check(
+        "linearity adapter values vs 32-layer means",
+        f"これらは代表 ${len(rep_layers)}$ 層で評価した値であり，\\S\\ref{{sec:space}}の ${next(iter(main_layers))}$ 層平均 "
+        f"${fmt(ab, 3)}$／${fmt(ba, 3)}$ とは層も行も異なる",
+    )
     # The abstract and introduction no longer restate the direct-affine reach; it is pinned where the
     # linearity subsection prints it ("direct affine reach" below).
     check(
@@ -288,6 +381,10 @@ def main():
         ]
         == [("A_to_B@4", "sciq")],
     )
+    check(
+        "introduction: only one chimera beats RWKV, on SciQ",
+        "RWKV 単体を正答率で有意に上回ったキメラモデルも，SciQ における一つのみであった",
+    )
     vs_pythia = [
         next(
             r
@@ -331,6 +428,11 @@ def main():
 
     qa = load(table_dir, "paper_cross_family_qa_accuracy.csv")
     qa_acc = {(r["config"], r["task"]): float(r["accuracy_norm"]) * 100 for r in qa}
+    check(
+        "results: only R->P L=4 on SciQ beats RWKV",
+        f"RWKV（ARC ${fmt(qa_acc[('rwkv', 'arc_easy')], 1)}\\%$，SciQ ${fmt(qa_acc[('rwkv', 'sciq')], 1)}\\%$）"
+        "を有意に上回るのは SciQ における \\RtoPL{4} のみであり",
+    )
     ab_affine_gaps = [
         qa_acc[(f"A_to_B@{l}", task)] - qa_acc[(f"A_to_B_affine@{l}", task)]
         for task in ("arc_easy", "sciq")
@@ -398,7 +500,7 @@ def main():
     )
     check(
         "table5 pythia row",
-        f"P 単体 & -- & 32 & {fmt(float(parent_b['kv_kib_per_token']), 0)} & {fmt(float(parent_b['kv_gib_at_context']), 2)} & 0 & "
+        f"P 単体 & -- & {parent_b['transformer_layers']} & {fmt(float(parent_b['kv_kib_per_token']), 0)} & {fmt(float(parent_b['kv_gib_at_context']), 2)} & 0 & "
         f"{fmt(float(parent_b['arc_easy_accuracy_norm']) * 100, 1)}/{fmt(float(parent_b['sciq_accuracy_norm']) * 100, 1)}\\\\",
     )
     check(
@@ -407,9 +509,9 @@ def main():
     )
     check(
         "table5 BA@4 row",
-        f"\\textbf{{{fmt(float(ba4['kv_kib_per_token']), 0)}}} & \\textbf{{{fmt(float(ba4['kv_gib_at_context']), 2)}}} & "
-        f"\\textbf{{{fmt(float(ba4['kv_reduction_fraction']) * 100, 1)}}} & "
-        f"\\textbf{{{fmt(float(ba4['arc_easy_accuracy_norm']) * 100, 1)}/{fmt(float(ba4['sciq_accuracy_norm']) * 100, 1)}}}\\\\",
+        f"P$\\to$R & {ba4['switch_layer']} & {ba4['transformer_layers']} & {fmt(float(ba4['kv_kib_per_token']), 0)} & {fmt(float(ba4['kv_gib_at_context']), 2)} & "
+        f"{fmt(float(ba4['kv_reduction_fraction']) * 100, 1)} & "
+        f"{fmt(float(ba4['arc_easy_accuracy_norm']) * 100, 1)}/{fmt(float(ba4['sciq_accuracy_norm']) * 100, 1)}\\\\",
     )
     frontier = sorted(
         ((float(r["kv_reduction_fraction"]), float(r["sciq_accuracy_norm"]), c) for c, r in mem.items()),
@@ -500,7 +602,7 @@ def main():
         layer = int(config.split("@")[1])
         check(
             f"early-exit table {config}",
-            f"\\textsf{{{label}}} & {layer} & {kept} & "
+            f"{label} & {layer} & {kept} & "
             f"${signed(fmt(-float(arc['accuracy_difference']) * 100, 1))}$ & ${table_p(arc['mcnemar_p'])}$ & "
             f"${signed(fmt(-float(sciq['accuracy_difference']) * 100, 1))}$ & ${table_p(sciq['mcnemar_p'])}$\\\\",
         )
@@ -511,6 +613,14 @@ def main():
             for r in exits
             if int(r["config_a"].split("@")[1]) <= 17
         ),
+    )
+    le17 = {r["config_b"] for r in exits if int(r["config_a"].split("@")[1]) <= 17}
+    ge23 = {r["config_b"] for r in exits if int(r["config_a"].split("@")[1]) >= 23}
+    check("early-exit <=17 configuration count", f"Transformer 層を $17$ 層以下に減らす ${len(le17)}$ 構成では，両課題とも")
+    check("early-exit >=23 configuration count", f"$23$ 層以上を残す ${len(ge23)}$ 構成では差が小さく")
+    check(
+        "conclusion: early-exit qualification",
+        "早期終了を両課題で大きく上回るのは，Transformer 層を $17$ 層以下に減らす構成である",
     )
     invariant(
         "among chimeras keeping >=23 layers only RWKV->Pythia L=8 on ARC differs significantly",
@@ -576,6 +686,33 @@ def main():
                 f"runs = {runs}",
             )
 
+    # Learning-rate schedule. torch's ReduceLROnPlateau (mode="max", default threshold_mode "rel") updates its best value
+    # only when an evaluation exceeds it by the relative threshold, and halves the rate once more than `patience`
+    # evaluations in a row bring no update, so the paper must print patience + 1.
+    repo = pathlib.Path(__file__).resolve().parents[1]
+    trainer = (repo / "experiments" / "adapter7b.py").read_text(encoding="utf-8")
+    invariant(
+        "plateau scheduler settings",
+        'ReduceLROnPlateau(opt, mode="max", factor=0.5, patience=a.patience,' in trainer
+        and "threshold=1e-3, min_lr=1e-5)" in trainer
+        and 'sched.step(ev["A->B"])' in trainer
+        and not re.search(r"threshold_mode|cooldown", trainer),
+    )
+    jobs = [p.read_text(encoding="utf-8") for p in sorted((repo / "experiments" / "slurm").glob("*.sbatch"))]
+    jobs = [j for j in jobs if "adapter7b.py" in j]
+    per_job = [re.findall(r"--patience (\d+)", j) for j in jobs]
+    invariant(
+        "every training job uses the plateau schedule with one patience",
+        bool(jobs) and all("--sched plateau" in j for j in jobs) and all(len(p) == 1 for p in per_job)
+        and len({p[0] for p in per_job if p}) == 1,
+        f"{per_job}",
+    )
+    patience = min((int(p[0]) for p in per_job if p), default=-2)
+    check(
+        "learning-rate halving rule",
+        f"最良値を相対で $10^{{-3}}$ より大きく上回った評価でのみ最良値を更新し，更新のない評価が ${patience + 1}$ 回続くたびに $0.5$ 倍した",
+    )
+
     # Evaluation-set exposure: produced by tools/check_eval_leakage.py, which needs no
     # GPU (it recomputes from the per-item correctness dumps), so a reviewer can rerun it.
     leak_path = table_dir.parent / "raw" / "eval_leakage.json"
@@ -620,6 +757,7 @@ def main():
     if adapter_pkgs and full_pkgs:
         train_cfg = json.loads((adapter_pkgs[0] / "config.json").read_text(encoding="utf-8"))["training"]
         headline_windows = int(train_cfg["held_out_windows"])
+        check("selected checkpoint", f"${comma(train_cfg['step'])}$ 反復目のチェックポイントの $f$ は ${fmt(f_var, 3)}$")
         check(
             "held-out set size (headline)",
             f"系列 ${comma(headline_windows)}$ 本，すなわち ${comma(headline_windows * 112)}$ トークンで求める",
