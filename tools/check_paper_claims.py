@@ -383,7 +383,7 @@ def main():
     )
     check(
         "introduction: only one chimera beats RWKV, on SciQ",
-        "RWKV 単体を正答率で有意に上回ったキメラモデルも，SciQ における一つのみであった",
+        "RWKV 単体を正答率で有意に上回ったキメラモデルも，理科の問題集 SciQ における一つのみであった",
     )
     vs_pythia = [
         next(
