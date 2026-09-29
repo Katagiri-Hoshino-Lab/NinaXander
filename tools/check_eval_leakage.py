@@ -102,8 +102,10 @@ def main():
     hits, skipped, rows_kept, corpus_chars = scan(questions)
     recomputed = recompute(raw_dir, hits)
 
-    # Exposure cannot be blamed for a difficulty gap that the UNEXPOSED parent
-    # shows too, so record both parents on the matched subset.
+    # Record both parents on the matched subset. RWKV's listed instruction data
+    # omit FLAN V2, so a gap it shares with Pythia is consistent with question
+    # difficulty. RWKV's own data and The Pile are not scanned, so this does not
+    # show that RWKV is unexposed.
     contrast = []
     for name, task in [("a_to_b_qa_items_arc.json", "arc_easy"), ("a_to_b_qa_items_sciq.json", "sciq")]:
         data = json.loads((raw_dir / name).read_text())

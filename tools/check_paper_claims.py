@@ -191,10 +191,10 @@ def main():
     check("generation scope in the conclusion", f"$L{{=}}4$ の ${len(gen_chimeras)}$ 構成は構文的に妥当な文を生成した")
     lrs = [float(curve[s]["learning_rate"]) for s in sorted(curve)]
     invariant("learning rate decays over the printed range", max(lrs) == 1e-3 and min(lrs) == 1e-5 and lrs == sorted(lrs, reverse=True))
-    check("learning-rate range", "学習率を $10^{-3}\\!\\to\\!10^{-5}$ とした")
+    check("learning-rate range", "学習率の初期値を $10^{-3}$，下限を $10^{-5}$ とした")
     gaps = {b - a for a, b in zip(sorted(curve), sorted(curve)[1:])}
     invariant("the curve is logged at one evaluation interval", len(gaps) == 1, f"{gaps}")
-    check("evaluation interval", f"学習率は，${comma(min(gaps, default=-1))}$ 反復ごとに評価用データ")
+    check("evaluation interval", f"${comma(min(gaps, default=-1))}$ 反復ごとに評価用データ")
     ident_err = {
         s: abs((1 - float(r["latent_f"])) + float(r["latent_f"]) * float(r["latent_rho_centered"]) - float(r["latent_rho_raw"]))
         for s, r in curve.items()
@@ -552,7 +552,7 @@ def main():
     ratio = ppl[("B_to_A@4", "wikitext", 2048)] / ppl[("pure-RWKV", "wikitext", 2048)]
     check(
         "domain shift ratio",
-        f"WikiText の ${fmt(ppl[('B_to_A@4', 'wikitext', 2048)], 2)}$ は，同じ文脈長で良い方の親モデルである RWKV の "
+        f"WikiText の ${fmt(ppl[('B_to_A@4', 'wikitext', 2048)], 2)}$ は，同じ文脈長で perplexity の低い親モデルである RWKV の "
         f"${fmt(ppl[('pure-RWKV', 'wikitext', 2048)], 2)}$ の ${fmt(ratio, 1)}$ 倍",
     )
     for config, x in (("pure-RWKV", 11), ("pure-Pythia", 33), ("A_to_B@4", 55), ("B_to_A@4", 77)):
@@ -710,7 +710,7 @@ def main():
     patience = min((int(p[0]) for p in per_job if p), default=-2)
     check(
         "learning-rate halving rule",
-        f"最良値を相対で $10^{{-3}}$ より大きく上回った評価でのみ最良値を更新し，更新のない評価が ${patience + 1}$ 回続くたびに $0.5$ 倍した",
+        f"基準値を相対で $10^{{-3}}$ より大きく上回った評価でのみ基準値を更新して，更新のない評価が ${patience + 1}$ 回続くたびに学習率を $0.5$ 倍した",
     )
 
     # Evaluation-set exposure: produced by tools/check_eval_leakage.py, which needs no
@@ -732,7 +732,7 @@ def main():
             for c in leak["parent_contrast"]
         }
         check(
-            "leakage unexposed-parent contrast",
+            "leakage RWKV matched-subset contrast",
             f"変化は ARC で ${signed(fmt(contrast[('arc_easy', 'rwkv')], 1))}$ 点，"
             f"SciQ で ${signed(fmt(contrast[('sciq', 'rwkv')], 1))}$ 点",
         )
@@ -743,7 +743,7 @@ def main():
                 f"内訳は ARC が ${skipped['arc_easy']}$ 問，SciQ が ${skipped['sciq']}$ 問",
             )
         invariant(
-            "leakage does not overturn any comparison",
+            "leakage changes every accuracy by under 1 point",
             leak["max_abs_delta_points"] < 1.0,
             f"max |delta| = {leak['max_abs_delta_points']}",
         )
@@ -760,11 +760,11 @@ def main():
         check("selected checkpoint", f"${comma(train_cfg['step'])}$ 反復目のチェックポイントの $f$ は ${fmt(f_var, 3)}$")
         check(
             "held-out set size (headline)",
-            f"系列 ${comma(headline_windows)}$ 本，すなわち ${comma(headline_windows * 112)}$ トークンで求める",
+            f"系列 ${comma(headline_windows)}$ 本，計 ${comma(headline_windows * 112)}$ トークンで求める",
         )
         check(
             "held-out set size (per-layer and shuffle)",
-            f"系列 ${comma(layer_windows)}$ 本，すなわち ${comma(layer_windows * 112)}$ トークンを用いる",
+            f"系列 ${comma(layer_windows)}$ 本，計 ${comma(layer_windows * 112)}$ トークンを用いる",
         )
         adapter_params = safetensors_param_count(adapter_pkgs[0] / "model.safetensors")
         parent_bytes = sum(
