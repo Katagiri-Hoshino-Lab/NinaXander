@@ -162,7 +162,6 @@ case "$MODE" in
       paper/ipsj.cls
       paper/ipsjtech.sty
       paper/ipsjunsrt.bst
-      paper/ipsjunsrt-e.bst
     )
     have_release=0
     [[ -d release/huggingface ]] && have_release=1
@@ -365,11 +364,11 @@ PY
     pages=$(pdfinfo paper_ja.pdf 2>/dev/null | awk '/^Pages:/{print $2}')
     echo "paper/paper_ja.pdf OK (${pages:-unknown} pages)"
     if [[ -f paper_en.tex ]]; then
-      run_tex platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_en.tex
-      run_tex pbibtex -kanji=utf8 paper_en
-      run_tex platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_en.tex
-      run_tex platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_en.tex
-      run_tex dvipdfmx paper_en.dvi
+      # The English paper uses the IEEE conference format and pdfLaTeX (as on arXiv).
+      run_tex pdflatex -interaction=nonstopmode -halt-on-error paper_en.tex
+      run_tex bibtex paper_en
+      run_tex pdflatex -interaction=nonstopmode -halt-on-error paper_en.tex
+      run_tex pdflatex -interaction=nonstopmode -halt-on-error paper_en.tex
       pages_en=$(pdfinfo paper_en.pdf 2>/dev/null | awk '/^Pages:/{print $2}')
       echo "paper/paper_en.pdf OK (${pages_en:-unknown} pages)"
     fi
