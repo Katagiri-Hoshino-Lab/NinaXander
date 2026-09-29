@@ -80,7 +80,7 @@ read-out, from a 416,000-step run.
 ## Hugging Face packages
 
 Three inference packages are staged locally by `tools/export_hf_adapter.py` and `tools/export_hf_chimera.py`
-under `release/huggingface/` (gitignored), and mirrored to private Hub repositories:
+under `release/huggingface/` (gitignored), and published as public Hub repositories:
 
 | Package | Contents |
 |---|---|
@@ -88,8 +88,8 @@ under `release/huggingface/` (gitignored), and mirrored to private Hub repositor
 | [`ninaxander-tulu69-to-raven7b-best`](https://huggingface.co/Katagiri-Hoshino-Lab/ninaxander-tulu69-to-raven7b-best) | Pythia→RWKV at `L=4`, with both fp16 parents bundled |
 | [`ninaxander-raven7b-to-tulu69-best`](https://huggingface.co/Katagiri-Hoshino-Lab/ninaxander-raven7b-to-tulu69-best) | RWKV→Pythia at `L=4`, with both fp16 parents bundled |
 
-The repositories are private; access requires the owner's permission, and they are grouped in a private
-[collection](https://huggingface.co/collections/Katagiri-Hoshino-Lab/ninaxander-private-inference-releases-6a9010088ba6e224ea2ea8dd).
+The repositories are public and are grouped in a
+[collection](https://huggingface.co/collections/Katagiri-Hoshino-Lab/ninaxander-inference-releases-6a9010088ba6e224ea2ea8dd).
 `release/huggingface/REMOTE_RELEASES.csv` records the verified revision, file count, and integrity status of each.
 The `L=4` default in both direction-locked packages is a post-hoc choice on the reported test sets, with no
 independent selection split; the other boundaries remain selectable within a package's own direction.

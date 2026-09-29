@@ -73,7 +73,7 @@ cp .env.example .env                 # Python、模型与 SLURM 的本地设置
 ## Hugging Face 发布包
 
 三个推理用包由 `tools/export_hf_adapter.py` 与 `tools/export_hf_chimera.py` 生成到
-`release/huggingface/`（已 gitignore），并镜像到私有的 Hub 仓库。
+`release/huggingface/`（已 gitignore），并发布到公开的 Hub 仓库。
 
 | 包 | 内容 |
 |---|---|
@@ -81,8 +81,8 @@ cp .env.example .env                 # Python、模型与 SLURM 的本地设置
 | [`ninaxander-tulu69-to-raven7b-best`](https://huggingface.co/Katagiri-Hoshino-Lab/ninaxander-tulu69-to-raven7b-best) | Pythia→RWKV 的 `L=4`，内含 fp16 双亲 |
 | [`ninaxander-raven7b-to-tulu69-best`](https://huggingface.co/Katagiri-Hoshino-Lab/ninaxander-raven7b-to-tulu69-best) | RWKV→Pythia 的 `L=4`，内含 fp16 双亲 |
 
-这些仓库为私有，访问需所有者授权，并归入一个私有
-[合集](https://huggingface.co/collections/Katagiri-Hoshino-Lab/ninaxander-private-inference-releases-6a9010088ba6e224ea2ea8dd)。
+这些仓库已公开，并归入一个
+[合集](https://huggingface.co/collections/Katagiri-Hoshino-Lab/ninaxander-inference-releases-6a9010088ba6e224ea2ea8dd)。
 `release/huggingface/REMOTE_RELEASES.csv` 记录每个仓库经过验证的修订号、文件数与完整性状态。方向锁定包中的默认
 `L=4` 是在所报告测试集上的事后选择，没有独立的选择划分；其他边界仍可在同一包自身的方向内选用。
 

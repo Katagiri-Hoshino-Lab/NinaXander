@@ -75,7 +75,7 @@ step 415,000 である。
 ## Hugging Face 配布物
 
 推論用の 3 パッケージを `tools/export_hf_adapter.py` と `tools/export_hf_chimera.py` が
-`release/huggingface/`（gitignore 済み）に生成し、private な Hub リポジトリへ複製している。
+`release/huggingface/`（gitignore 済み）に生成し、公開の Hub リポジトリで配布している。
 
 | パッケージ | 内容 |
 |---|---|
@@ -83,8 +83,8 @@ step 415,000 である。
 | [`ninaxander-tulu69-to-raven7b-best`](https://huggingface.co/Katagiri-Hoshino-Lab/ninaxander-tulu69-to-raven7b-best) | Pythia→RWKV の `L=4`、fp16 の両親を同梱 |
 | [`ninaxander-raven7b-to-tulu69-best`](https://huggingface.co/Katagiri-Hoshino-Lab/ninaxander-raven7b-to-tulu69-best) | RWKV→Pythia の `L=4`、fp16 の両親を同梱 |
 
-これらのリポジトリは private であり、閲覧には所有者の許可が要る。private な
-[コレクション](https://huggingface.co/collections/Katagiri-Hoshino-Lab/ninaxander-private-inference-releases-6a9010088ba6e224ea2ea8dd)
+これらのリポジトリは公開しており、
+[コレクション](https://huggingface.co/collections/Katagiri-Hoshino-Lab/ninaxander-inference-releases-6a9010088ba6e224ea2ea8dd)
 にまとめてある。`release/huggingface/REMOTE_RELEASES.csv` に、各リポジトリの検証済みリビジョン・ファイル数・
 完全性の状態を記録している。方向固定パッケージの既定値 `L=4` は報告テスト集合上の事後選択であり、独立した選択分割を
 持たない。他の境界も、そのパッケージ自身の方向内でなら選択できる。
