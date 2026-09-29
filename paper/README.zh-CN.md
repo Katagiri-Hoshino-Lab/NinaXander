@@ -10,7 +10,7 @@
 - **[paper_en.tex](paper_en.tex)** — `paper_ja.tex`的英文版。`../tools/check_en_number_parity.py`
   检查两者的多位数与小数数值一致（个位数差异仅给出警告）。
 
-使用`../reproduce.sh paper`或直接执行以下命令构建（英文版以`paper_en`重复相同步骤）：
+使用`../reproduce.sh paper`或直接执行以下命令构建。日文版使用IPSJ的class（pLaTeX），英文版使用IEEE会议论文格式（`pdflatex paper_en && bibtex paper_en && pdflatex paper_en && pdflatex paper_en`）：
 
 ```bash
 platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_ja.tex &&
@@ -20,10 +20,11 @@ platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_ja.tex &&
 dvipdfmx paper_ja.dvi
 ```
 
-两篇论文均使用情报处理学会研究报告（IPSJ SIG Technical Report）的class（`ipsj.cls` v4.1与`ipsjtech.sty`，
-日文版用`ipsjunsrt.bst`，英文版用`ipsjunsrt-e.bst`），这些文件取自IPSJ发布的`ipsj_v4-1.zip`
-（UTF-8版，2025-02-05）并随附于本目录。该class仅能在pLaTeX下运行，因此构建需要TeX Live的pLaTeX、pBibTeX和dvipdfmx，
+日文版使用情报处理学会研究报告（IPSJ SIG Technical Report）的class（`ipsj.cls` v4.1、`ipsjtech.sty`与
+`ipsjunsrt.bst`），这些文件取自IPSJ发布的`ipsj_v4-1.zip`（UTF-8版，2025-02-05）并随附于本目录。该class仅能在pLaTeX下运行，
+因此日文版构建需要TeX Live的pLaTeX、pBibTeX和dvipdfmx，
 以及`japanese-otf`和已通过`kanji-config-updmap-sys haranoaji`配置的`ptex-fontmaps`（dvipdfmx据此嵌入原之味字体）。
+英文版使用TeX Live自带的`IEEEtran` class与`IEEEtran.bst`，与arXiv相同，用pdfLaTeX构建。
 
 除层对应图外，每幅图都是无需外部图片文件的self-contained TikZ；`fig_layer_cka.pdf`与
 `fig_layer_cka_en.pdf`由`../tools/make_layer_cka_figure.py`从表格生成（`../reproduce.sh paper`

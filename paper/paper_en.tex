@@ -1,56 +1,17 @@
-\PassOptionsToPackage{dvipdfmx}{graphicx}
-\PassOptionsToPackage{dvipdfmx}{xcolor}
-\PassOptionsToPackage{dvipdfmx}{color}
-\documentclass[techrep,english]{ipsj}
-\makeatletter
-% ipsjtech.sty (english) closes its footer group too early, so \@evenfoot never gets the page number.
-\let\ipsj@ps@orig\ps@IPSJTITLEheadings
-\def\ps@IPSJTITLEheadings{\ipsj@ps@orig\let\@evenfoot\@oddfoot}
-\pagestyle{IPSJTITLEheadings}
-\makeatother
-% ipsj.cls asks for commercial Morisawa title faces; substitute the standard pTeX gothic (mapped to Harano Aji).
-% In english mode the class neither declares nor uses these families, so the substitution applies to Japanese mode only.
-\makeatletter\ifDS@english\else
-\DeclareFontShape{JY1}{fgb}{m}{n}{<-> s*[0.962216] gbm}{}
-\DeclareFontShape{JT1}{fgb}{m}{n}{<-> s*[0.962216] gbmv}{}
-\DeclareFontShape{JY1}{fmb}{m}{n}{<-> s*[0.962216] gbm}{}
-\DeclareFontShape{JT1}{fmb}{m}{n}{<-> s*[0.962216] gbmv}{}
-\fi\makeatother
-% The english "Abstract:" label asks for bold italic sans, which Computer Modern Sans lacks; use upright bold explicitly.
-\DeclareFontShape{OT1}{cmss}{bx}{it}{<->ssub*cmss/bx/n}{}
+\documentclass[conference]{IEEEtran}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{graphicx}
 \usepackage{xcolor}
-\def\pgfsysdriver{pgfsys-dvipdfmx.def}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc}
 \usepackage{float}
 \usepackage{url}
-% hyperref breaks ipsj.cls's \cite, so links are printed as plain text.
-\providecommand{\href}[2]{#2}
-% ipsj.cls typesets bibliography URLs as plain text, which fails on "_"; route them through \url.
-\makeatletter
-\def\@urle#1{\normalfont available from $\langle$\nobreak\url{#1}\nobreak$\rangle$}
-\def\@urlj#1{\normalfont 入手先$\langle$\nobreak\url{#1}\nobreak$\rangle$}
-% A single-line table caption ends with no gap; without one the top rule touches the caption.
-\def\ipsj@tabletype{table}
-\let\ipsj@orig@makecaption\@makecaption
-\long\def\@makecaption#1#2{\ipsj@orig@makecaption{#1}{#2}\ifx\@captype\ipsj@tabletype\par\vskip 2mm\fi}
-\makeatother
-% Footer year (the class otherwise derives it from the volume counter).
-\setcounter{year}{2026}
-% Number headings down to \subsubsection; no bold run-in \paragraph headings are used.
-\AtBeginDocument{\setcounter{secnumdepth}{3}}
-% hyperref is not loaded, so write the PDF document information directly (EUC strings converted by dvipdfmx).
-\AtBeginDvi{\special{pdf:tounicode EUC-UCS2}\special{pdf:docinfo<<
-  /Title (NinaXander: Feasibility and Limits of Composing Frozen Language Models Across Architecture Families via a Shared Latent Space)
-  /Author (Takanori Kotama, Shun-ichiro Hayashi, Daichi Mukunoki, Tetsuya Hoshino, Takahiro Katagiri)
-  /Subject (Composing frozen RWKV and Transformer models via a shared latent space)
-  /Keywords (language model composition, RWKV, Transformer, representation alignment)>>}}
-
-% Body text uses no bold emphasis.
+\usepackage[hidelinks]{hyperref}
+\usepackage{cite}
+\newcommand{\figref}[1]{Fig.~\ref{#1}}
+\newcommand{\tabref}[1]{Table~\ref{#1}}
 \newcommand{\kw}[1]{#1}
 \newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
 \newcommand{\Rsq}{R^2}
@@ -69,14 +30,13 @@
 
 \title{NinaXander: Feasibility and Limits of Composing Frozen Language Models Across Architecture Families via a Shared Latent Space}
 
-\affiliate{GSI}{Graduate School of Informatics, Nagoya University}
-\affiliate{ITC}{Information Technology Center, Nagoya University}
+\author{\IEEEauthorblockN{Takanori Kotama and Shun-ichiro Hayashi}
+\IEEEauthorblockA{Graduate School of Informatics\\Nagoya University}
+\and
+\IEEEauthorblockN{Daichi Mukunoki, Tetsuya Hoshino and Takahiro Katagiri}
+\IEEEauthorblockA{Information Technology Center\\Nagoya University}}
 
-\author{Takanori Kotama}{GSI}
-\author{Shun-ichiro Hayashi}{GSI}
-\author{Daichi Mukunoki}{ITC}
-\author{Tetsuya Hoshino}{ITC}
-\author{Takahiro Katagiri}{ITC}
+\maketitle
 
 \begin{abstract}
 In this paper we propose \kw{NinaXander}, a series of composed language models obtained by connecting layers of frozen language
@@ -95,7 +55,6 @@ obtained in one favorable case, with a shared tokenizer, the same depth, and the
 a general semantic space.
 \end{abstract}
 
-\maketitle
 
 \section{Introduction}\label{sec:intro}
 Pretraining a language model requires an enormous amount of computation, yet its result remains only as weights fixed to a
@@ -1107,12 +1066,12 @@ domains, identifying what limits the self-reconstruction accuracy, selecting com
 error accumulates over several switch layers, and reproduction with multiple
 random seeds.
 
-\begin{acknowledgment}
+\section*{Acknowledgment}
 This work was supported by the JST Next-Generation Edge AI Semiconductor Research and Development Program, Grant Number JPMJES2511.
 This work was also supported by the Joint Usage/Research Center for Interdisciplinary Large-scale Information Infrastructures (JHPCN) in Japan (Project ID: jh260017).
-\end{acknowledgment}
 
-\bibliographystyle{ipsjunsrt-e}
+
+\bibliographystyle{IEEEtran}
 \bibliography{reference}
 
 \appendix

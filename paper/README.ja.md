@@ -11,7 +11,7 @@ shared-latent chimera研究の論文です。
 - **[paper_en.tex](paper_en.tex)** — `paper_ja.tex`の英語版です。`../tools/check_en_number_parity.py`が
   両者の複数桁・小数の数値が一致することを検査します（1桁の数字の差は警告のみ）。
 
-`../reproduce.sh paper`、または次のcommandでbuildします（英語版は`paper_en`で同じ手順を繰り返します）。
+`../reproduce.sh paper`、または次のcommandでbuildします。日本語版はIPSJのclass（pLaTeX）、英語版はIEEEの会議論文形式です（`pdflatex paper_en && bibtex paper_en && pdflatex paper_en && pdflatex paper_en`）。
 
 ```bash
 platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_ja.tex &&
@@ -21,11 +21,11 @@ platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_ja.tex &&
 dvipdfmx paper_ja.dvi
 ```
 
-両論文は情報処理学会研究報告（IPSJ SIG Technical Report）のclass（`ipsj.cls` v4.1と`ipsjtech.sty`、
-日本語版は`ipsjunsrt.bst`、英語版は`ipsjunsrt-e.bst`）を使用します。これらはIPSJ配布の
-`ipsj_v4-1.zip`（UTF-8版、2025-02-05）からこのdirectoryに同梱しています。classはpLaTeXでのみ動作するため、
-buildにはTeX LiveのpLaTeX、pBibTeX、dvipdfmxに加え、`japanese-otf`と、
-`kanji-config-updmap-sys haranoaji`で設定した`ptex-fontmaps`が必要です（dvipdfmxが原ノ味フォントを埋め込みます）。
+日本語版は情報処理学会研究報告（IPSJ SIG Technical Report）のclass（`ipsj.cls` v4.1、`ipsjtech.sty`、
+`ipsjunsrt.bst`）を使用します。これらはIPSJ配布の`ipsj_v4-1.zip`（UTF-8版、2025-02-05）からこのdirectoryに
+同梱しています。classはpLaTeXでのみ動作するため、日本語版のbuildにはTeX LiveのpLaTeX、pBibTeX、dvipdfmxに加え、
+`japanese-otf`と、`kanji-config-updmap-sys haranoaji`で設定した`ptex-fontmaps`が必要です（dvipdfmxが原ノ味フォントを埋め込みます）。
+英語版はTeX Live標準の`IEEEtran` classと`IEEEtran.bst`を使い、arXivと同じくpdfLaTeXでbuildします。
 
 層対応の図を除くすべての図は外部画像を使わないself-contained TikZです。`fig_layer_cka.pdf`と
 `fig_layer_cka_en.pdf`は`../tools/make_layer_cka_figure.py`がtableから生成します（`../reproduce.sh paper`は

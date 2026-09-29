@@ -11,7 +11,8 @@ The write-up of the shared-latent chimera work.
 - **[paper_en.tex](paper_en.tex)** — the English mirror of `paper_ja.tex`. `../tools/check_en_number_parity.py`
   requires every multi-digit and decimal number to match between the two sources (single-digit differences only warn).
 
-Build with `../reproduce.sh paper`, or directly (repeat with `paper_en` for the English mirror):
+Build with `../reproduce.sh paper`, or directly. The Japanese paper uses the IPSJ class (pLaTeX); the English mirror
+uses the IEEE conference format (`pdflatex paper_en && bibtex paper_en && pdflatex paper_en && pdflatex paper_en`):
 
 ```bash
 platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_ja.tex &&
@@ -21,11 +22,11 @@ platex -kanji=utf8 -interaction=nonstopmode -halt-on-error paper_ja.tex &&
 dvipdfmx paper_ja.dvi
 ```
 
-Both papers use the IPSJ SIG Technical Report class (情報処理学会研究報告; `ipsj.cls` v4.1 with `ipsjtech.sty`,
-`ipsjunsrt.bst` for the Japanese paper and `ipsjunsrt-e.bst` for the English one), vendored in this directory from
-IPSJ's `ipsj_v4-1.zip` (UTF-8 edition, 2025-02-05). The class runs only under pLaTeX, so the build needs TeX Live's
-pLaTeX, pBibTeX and dvipdfmx, plus `japanese-otf` and `ptex-fontmaps` configured with
-`kanji-config-updmap-sys haranoaji` (dvipdfmx then embeds the Harano Aji fonts).
+The Japanese paper uses the IPSJ SIG Technical Report class (情報処理学会研究報告; `ipsj.cls` v4.1 with `ipsjtech.sty`
+and `ipsjunsrt.bst`), vendored in this directory from IPSJ's `ipsj_v4-1.zip` (UTF-8 edition, 2025-02-05). The class
+runs only under pLaTeX, so the Japanese build needs TeX Live's pLaTeX, pBibTeX and dvipdfmx, plus `japanese-otf` and
+`ptex-fontmaps` configured with `kanji-config-updmap-sys haranoaji` (dvipdfmx then embeds the Harano Aji fonts).
+The English paper uses TeX Live's standard `IEEEtran` class and `IEEEtran.bst` and builds with pdfLaTeX, as on arXiv.
 
 Every figure except the layer-correspondence figure is self-contained TikZ (no external image files); `fig_layer_cka.pdf` and
 `fig_layer_cka_en.pdf` are generated from the tables by `../tools/make_layer_cka_figure.py` (`../reproduce.sh paper`
